@@ -40,6 +40,8 @@ export interface CanvasElement {
   style?: {
     backgroundColor?: string;
     borderColor?: string;
+    borderWidth?: number;
+    borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
     zIndex?: number;
     fontSize?: number;
     borderRadius?: number;
@@ -66,6 +68,7 @@ export interface Board {
   connections: Connection[];
   lastModified: number;
   viewport: { x: number; y: number; zoom: number };
+  trashed?: boolean;
 }
 
 export interface ViewTransform {
