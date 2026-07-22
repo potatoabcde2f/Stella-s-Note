@@ -1500,9 +1500,46 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
     );
 };
 
-const BG_IMAGE = 'https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85';
+const BG_IMAGE_1 = 'https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85';
+const BG_IMAGE_2 = 'https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_201152_bba90a12-bf12-459f-91f0-51f237dbaf3b.png&w=1280&q=85';
+const SPOTLIGHT_R = 260;
 
-// --- Auth Screen ---
+const RevealLayer = ({ image, cx, cy }: { image: string; cx: number; cy: number }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+    useEffect(() => {
+        const handle = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+        window.addEventListener('resize', handle);
+        return () => window.removeEventListener('resize', handle);
+    }, []);
+    useEffect(() => {
+        const c = canvasRef.current;
+        if (!c) return;
+        c.width = size.w; c.height = size.h;
+        const ctx = c.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, size.w, size.h);
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, SPOTLIGHT_R);
+        g.addColorStop(0, 'rgba(255,255,255,1)');
+        g.addColorStop(0.4, 'rgba(255,255,255,1)');
+        g.addColorStop(0.6, 'rgba(255,255,255,0.75)');
+        g.addColorStop(0.75, 'rgba(255,255,255,0.4)');
+        g.addColorStop(0.88, 'rgba(255,255,255,0.12)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(cx, cy, SPOTLIGHT_R, 0, Math.PI * 2); ctx.fill();
+    }, [cx, cy, size]);
+    const dataUrl = canvasRef.current?.toDataURL() || '';
+    return (
+        <>
+            <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ display: 'none' }} />
+            <div className="absolute inset-0 bg-center bg-cover bg-no-repeat z-30 pointer-events-none"
+                style={{ backgroundImage: `url(${image})`, maskImage: dataUrl ? `url(${dataUrl})` : undefined, WebkitMaskImage: dataUrl ? `url(${dataUrl})` : undefined, maskSize: '100% 100%', WebkitMaskSize: '100% 100%' }} />
+        </>
+    );
+};
+
+// --- Auth Screen with Cursor Spotlight ---
 
 const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObject<boolean> }) => {
     const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -1519,6 +1556,19 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
     const [codeSent, setCodeSent] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
     const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+    // Cursor spotlight
+    const [cursorPos, setCursorPos] = useState({ x: -999, y: -999 });
+    const mouse = useRef({ x: -999, y: -999 });
+    const smooth = useRef({ x: -999, y: -999 });
+    const rafRef = useRef<number>(0);
+    useEffect(() => {
+        const onMouse = (e: MouseEvent) => { mouse.current.x = e.clientX; mouse.current.y = e.clientY; };
+        window.addEventListener('mousemove', onMouse);
+        const loop = () => { smooth.current.x += (mouse.current.x - smooth.current.x) * 0.1; smooth.current.y += (mouse.current.y - smooth.current.y) * 0.1; setCursorPos({ x: smooth.current.x, y: smooth.current.y }); rafRef.current = requestAnimationFrame(loop); };
+        rafRef.current = requestAnimationFrame(loop);
+        return () => { window.removeEventListener('mousemove', onMouse); cancelAnimationFrame(rafRef.current); };
+    }, []);
 
     useEffect(() => { if (codeSent && otpRefs.current[0]) setTimeout(() => otpRefs.current[0]?.focus(), 200); }, [codeSent]);
     useEffect(() => { if (countdown > 0) { const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); } }, [countdown]);
@@ -1538,12 +1588,9 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
         } catch (err: any) { setError(err.message || '发送失败，请重试'); }
         finally { setLoading(false); }
     };
-
     const handleOtpChange = (i: number, v: string) => {
-        if (v && !/^\d$/.test(v)) return;
-        const n = [...otp]; n[i] = v; setOtp(n);
-        if (error) setError('');
-        if (v && i < 5) otpRefs.current[i + 1]?.focus();
+        if (v && !/^\d$/.test(v)) return; const n = [...otp]; n[i] = v; setOtp(n);
+        if (error) setError(''); if (v && i < 5) otpRefs.current[i + 1]?.focus();
     };
     const handleOtpKeyDown = (i: number, e: React.KeyboardEvent) => {
         if (e.key === 'Backspace') {
@@ -1551,16 +1598,9 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
             else { const n = [...otp]; n[i] = ''; setOtp(n); }
         }
     };
-    const handleOtpPaste = (e: React.ClipboardEvent) => {
-        e.preventDefault();
-        const p = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-        if (p.length !== 6) return;
-        setOtp(p.split(''));
-    };
-
+    const handleOtpPaste = (e: React.ClipboardEvent) => { e.preventDefault(); const p = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6); if (p.length !== 6) return; setOtp(p.split('')); };
     const handleRegister = async () => {
-        if (!canRegister) return;
-        setLoading(true); setError('');
+        if (!canRegister) return; setLoading(true); setError('');
         if (registerLockRef) registerLockRef.current = true;
         try {
             const { error: verifyErr } = await supabase.auth.verifyOtp({ email: email.trim(), token: otp.join(''), type: 'email' });
@@ -1573,20 +1613,14 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
         } catch (err: any) { setError(err.message || '注册失败'); if (registerLockRef) registerLockRef.current = false; }
         finally { setLoading(false); }
     };
-
     const handleLogin = async () => {
-        if (!canLogin) return;
-        setLoading(true); setError('');
+        if (!canLogin) return; setLoading(true); setError('');
         try {
             const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-            if (error) {
-                if (error.message.includes('Invalid login credentials')) throw new Error('邮箱或密码错误');
-                throw error;
-            }
+            if (error) { if (error.message.includes('Invalid login credentials')) throw new Error('邮箱或密码错误'); throw error; }
         } catch (err: any) { setError(err.message || '登录失败'); }
         finally { setLoading(false); }
     };
-
     const switchMode = () => {
         setMode(mode === 'login' ? 'register' : 'login');
         setError(''); setMessage(''); setCodeSent(false);
@@ -1596,87 +1630,75 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
     const inputClass = "w-full bg-[#0A0A0A] border border-[#222] rounded-xl px-4 py-3 text-white text-sm focus:border-[#00FF9D] outline-none transition-all placeholder:text-gray-700";
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative"
-            style={{ background: `#000 url('${BG_IMAGE}') center/cover no-repeat` }}>
-            <div className="absolute inset-0 bg-black/60" />
-            <div className="w-full max-w-sm text-center relative z-10">
-                <img src="/logo.png" alt="Stella's Note" className="w-14 h-14 mx-auto mb-4 rounded-2xl" />
-                <h1 className="text-2xl font-bold text-white font-playfair mb-8">Stella's Note</h1>
+        <div className="min-h-screen relative overflow-hidden bg-black" style={{ height: '100dvh' }}>
+            {/* Base image */}
+            <div className="absolute inset-0 bg-center bg-cover bg-no-repeat z-10" style={{ backgroundImage: `url(${BG_IMAGE_1})` }} />
+            {/* Reveal layer with spotlight */}
+            <RevealLayer image={BG_IMAGE_2} cx={cursorPos.x} cy={cursorPos.y} />
+            {/* Dark overlay */}
+            <div className="absolute inset-0 bg-black/50 z-20" />
+            {/* Auth form */}
+            <div className="absolute inset-0 z-40 flex items-center justify-center p-4">
+                <div className="w-full max-w-sm text-center">
+                    <img src="/logo.png" alt="Stella's Note" className="w-14 h-14 mx-auto mb-4 rounded-2xl" />
+                    <h1 className="text-2xl font-bold text-white font-playfair mb-8">Stella's Note</h1>
+                    <div className="bg-[#141414]/90 backdrop-blur-md border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00FF9D] via-[#00B8FF] to-[#FF00FF]" />
+                        {successMsg && <div className="mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl">{successMsg}</div>}
 
-                <div className="bg-[#141414]/90 backdrop-blur-md border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00FF9D] via-[#00B8FF] to-[#FF00FF]" />
-
-                    {successMsg && <div className="mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl">{successMsg}</div>}
-
-                    {mode === 'register' && (
-                        <div className="space-y-3.5 text-left">
-                            <h2 className="text-lg font-bold text-white text-center">创建账号</h2>
-                            <input type="text" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} />
-                            <div className="flex gap-2">
-                                <input type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)} className={`flex-1 ${inputClass}`} />
-                                <button onClick={handleSendCode} disabled={!canSendCode}
-                                    className={`px-3 py-3 font-bold rounded-xl transition-all text-xs whitespace-nowrap ${countdown > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-[#00FF9D]/10 text-[#00FF9D] border border-[#00FF9D]/20 hover:bg-[#00FF9D]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}>
-                                    {loading ? <Loader2 className="animate-spin" size={16} /> : countdown > 0 ? `${countdown}s` : '发送验证码'}
-                                </button>
-                            </div>
-                            {message && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-3 rounded-xl">{message}</div>}
-                            {codeSent && (
-                                <div>
-                                    <p className="text-gray-500 text-xs mb-2">请输入6位验证码</p>
-                                    <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
-                                        {otp.map((d, i) => (
-                                            <input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
-                                                onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                                disabled={loading} className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
-                                        ))}
-                                    </div>
+                        {mode === 'register' && (
+                            <div className="space-y-3.5 text-left">
+                                <h2 className="text-lg font-bold text-white text-center">创建账号</h2>
+                                <input type="text" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} />
+                                <div className="flex gap-2">
+                                    <input type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)} className={`flex-1 ${inputClass}`} />
+                                    <button onClick={handleSendCode} disabled={!canSendCode}
+                                        className={`px-3 py-3 font-bold rounded-xl transition-all text-xs whitespace-nowrap ${countdown > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-[#00FF9D]/10 text-[#00FF9D] border border-[#00FF9D]/20 hover:bg-[#00FF9D]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}>
+                                        {loading ? <Loader2 className="animate-spin" size={16} /> : countdown > 0 ? `${countdown}s` : '发送验证码'}
+                                    </button>
                                 </div>
-                            )}
-                            <div className="relative">
-                                <input type={showPassword ? 'text' : 'password'} placeholder="密码（至少8个字符）" value={password}
-                                    onChange={(e) => setPassword(e.target.value)} className={inputClass + ' pr-10'} />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
-                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                {message && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-3 rounded-xl">{message}</div>}
+                                {codeSent && (
+                                    <div><p className="text-gray-500 text-xs mb-2">请输入6位验证码</p>
+                                        <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
+                                            {otp.map((d, i) => (<input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
+                                                onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)} disabled={loading}
+                                                className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />))}
+                                        </div></div>
+                                )}
+                                <div className="relative">
+                                    <input type={showPassword ? 'text' : 'password'} placeholder="密码（至少8个字符）" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass + ' pr-10'} />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+                                </div>
+                                <label className="flex items-start gap-2 cursor-pointer">
+                                    <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 accent-[#00FF9D]" />
+                                    <span className="text-gray-500 text-xs text-left">我已阅读并同意服务条款和隐私政策</span>
+                                </label>
+                                {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
+                                <button onClick={handleRegister} disabled={!canRegister}
+                                    className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
+                                    {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : '注册'}
                                 </button>
+                                <div className="text-center pt-1"><button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">已有账号？去登录</button></div>
                             </div>
-                            <label className="flex items-start gap-2 cursor-pointer">
-                                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 accent-[#00FF9D]" />
-                                <span className="text-gray-500 text-xs text-left">我已阅读并同意服务条款和隐私政策</span>
-                            </label>
-                            {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
-                            <button onClick={handleRegister} disabled={!canRegister}
-                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
-                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : '注册'}
-                            </button>
-                            <div className="text-center pt-1">
-                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">已有账号？去登录</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {mode === 'login' && (
-                        <div className="space-y-4 text-left">
-                            <h2 className="text-lg font-bold text-white text-center">登录</h2>
-                            <input type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()} className={inputClass} />
-                            <div className="relative">
-                                <input type={showPassword ? 'text' : 'password'} placeholder="密码" value={password}
-                                    onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()}
-                                    className={inputClass + ' pr-10'} />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
-                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        )}
+                        {mode === 'login' && (
+                            <div className="space-y-4 text-left">
+                                <h2 className="text-lg font-bold text-white text-center">登录</h2>
+                                <input type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()} className={inputClass} />
+                                <div className="relative">
+                                    <input type={showPassword ? 'text' : 'password'} placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()} className={inputClass + ' pr-10'} />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+                                </div>
+                                {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
+                                <button onClick={handleLogin} disabled={!canLogin}
+                                    className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
+                                    {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : '登录'}
                                 </button>
+                                <div className="text-center pt-1"><button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">还没有账号？去注册 →</button></div>
                             </div>
-                            {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
-                            <button onClick={handleLogin} disabled={!canLogin}
-                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
-                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : '登录'}
-                            </button>
-                            <div className="text-center pt-1">
-                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">还没有账号？去注册 →</button>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
