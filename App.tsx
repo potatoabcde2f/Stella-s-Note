@@ -1500,62 +1500,9 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
     );
 };
 
-// --- Reveal Layer (cursor spotlight) ---
+const BG_IMAGE = 'https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85';
 
-const BG_IMAGE_1 = 'https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85';
-const BG_IMAGE_2 = 'https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_201152_bba90a12-bf12-459f-91f0-51f237dbaf3b.png&w=1280&q=85';
-const SPOTLIGHT_R = 260;
-
-const RevealLayer = ({ image, cursorX, cursorY }: { image: string; cursorX: number; cursorY: number }) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
-
-    useEffect(() => {
-        const handleResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        canvas.width = size.w;
-        canvas.height = size.h;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.clearRect(0, 0, size.w, size.h);
-        const gradient = ctx.createRadialGradient(cursorX, cursorY, 0, cursorX, cursorY, SPOTLIGHT_R);
-        gradient.addColorStop(0, 'rgba(255,255,255,1)');
-        gradient.addColorStop(0.4, 'rgba(255,255,255,1)');
-        gradient.addColorStop(0.6, 'rgba(255,255,255,0.75)');
-        gradient.addColorStop(0.75, 'rgba(255,255,255,0.4)');
-        gradient.addColorStop(0.88, 'rgba(255,255,255,0.12)');
-        gradient.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(cursorX, cursorY, SPOTLIGHT_R, 0, Math.PI * 2);
-        ctx.fill();
-    }, [cursorX, cursorY, size]);
-
-    const dataUrl = canvasRef.current?.toDataURL() || '';
-
-    return (
-        <>
-            <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ display: 'none' }} />
-            <div className="absolute inset-0 bg-center bg-cover bg-no-repeat z-30 pointer-events-none"
-                style={{
-                    backgroundImage: `url(${image})`,
-                    maskImage: dataUrl ? `url(${dataUrl})` : undefined,
-                    WebkitMaskImage: dataUrl ? `url(${dataUrl})` : undefined,
-                    maskSize: '100% 100%',
-                    WebkitMaskSize: '100% 100%',
-                }}
-            />
-        </>
-    );
-};
-
-// --- Auth Screen with Cursor Spotlight ---
+// --- Auth Screen ---
 
 const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObject<boolean> }) => {
     const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -1571,26 +1518,6 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
     const [countdown, setCountdown] = useState(0);
     const [codeSent, setCodeSent] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
-
-    // Cursor tracking
-    const [cursorPos, setCursorPos] = useState({ x: -999, y: -999 });
-    const mouse = useRef({ x: -999, y: -999 });
-    const smooth = useRef({ x: -999, y: -999 });
-    const rafRef = useRef<number>(0);
-
-    useEffect(() => {
-        const handleMouse = (e: MouseEvent) => { mouse.current.x = e.clientX; mouse.current.y = e.clientY; };
-        window.addEventListener('mousemove', handleMouse);
-        const loop = () => {
-            smooth.current.x += (mouse.current.x - smooth.current.x) * 0.1;
-            smooth.current.y += (mouse.current.y - smooth.current.y) * 0.1;
-            setCursorPos({ x: smooth.current.x, y: smooth.current.y });
-            rafRef.current = requestAnimationFrame(loop);
-        };
-        rafRef.current = requestAnimationFrame(loop);
-        return () => { window.removeEventListener('mousemove', handleMouse); cancelAnimationFrame(rafRef.current); };
-    }, []);
-
     const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => { if (codeSent && otpRefs.current[0]) setTimeout(() => otpRefs.current[0]?.focus(), 200); }, [codeSent]);
@@ -1666,85 +1593,41 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
         setOtp(Array(6).fill('')); setPassword(''); setUsername(''); setSuccessMsg('');
     };
 
-    const inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-[#e8702a] outline-none transition-all placeholder:text-white/30";
+    const inputClass = "w-full bg-[#0A0A0A] border border-[#222] rounded-xl px-4 py-3 text-white text-sm focus:border-[#00FF9D] outline-none transition-all placeholder:text-gray-700";
 
     return (
-        <section className="relative w-full overflow-hidden bg-black" style={{ height: '100dvh' }}>
-            {/* Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between p-4 sm:p-5">
-                <div className="flex items-center gap-2">
-                    <svg width="26" height="26" viewBox="0 0 256 256" fill="#ffffff"><path d="M 256 256 L 128 256 L 0 128 L 128 128 Z M 256 128 L 128 128 L 0 0 L 128 0 Z"/></svg>
-                    <span className="text-white text-2xl font-playfair italic">Stella</span>
-                </div>
-                <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full px-2 py-2 items-center gap-1">
-                    <span className="text-white px-4 py-1.5 rounded-full text-sm font-medium">产品</span>
-                    <span className="text-white/80 hover:bg-white/20 hover:text-white transition-colors px-4 py-1.5 rounded-full text-sm font-medium cursor-pointer">功能</span>
-                    <span className="text-white/80 hover:bg-white/20 hover:text-white transition-colors px-4 py-1.5 rounded-full text-sm font-medium cursor-pointer">关于</span>
-                </div>
-                <div className="bg-white text-gray-900 text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-gray-100 cursor-pointer transition-all">注册</div>
-            </nav>
+        <div className="min-h-screen flex items-center justify-center p-4 relative"
+            style={{ background: `#000 url('${BG_IMAGE}') center/cover no-repeat` }}>
+            <div className="absolute inset-0 bg-black/60" />
+            <div className="w-full max-w-sm text-center relative z-10">
+                <img src="/logo.png" alt="Stella's Note" className="w-14 h-14 mx-auto mb-4 rounded-2xl" />
+                <h1 className="text-2xl font-bold text-white font-playfair mb-8">Stella's Note</h1>
 
-            {/* Base image */}
-            <div className="absolute inset-0 bg-center bg-cover bg-no-repeat hero-zoom z-10"
-                style={{ backgroundImage: `url(${BG_IMAGE_1})` }} />
+                <div className="bg-[#141414]/90 backdrop-blur-md border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00FF9D] via-[#00B8FF] to-[#FF00FF]" />
 
-            {/* Reveal layer */}
-            <RevealLayer image={BG_IMAGE_2} cursorX={cursorPos.x} cursorY={cursorPos.y} />
-
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-black/40 z-20" />
-
-            {/* Heading */}
-            <div className="absolute top-[14%] left-0 right-0 flex flex-col items-center text-center px-5 pointer-events-none z-50">
-                <h1 className="text-white leading-[0.95]">
-                    <span className="block font-playfair italic font-normal text-5xl sm:text-7xl md:text-8xl hero-anim hero-reveal"
-                        style={{ letterSpacing: '-0.05em', animationDelay: '0.25s' }}>Layers hold</span>
-                    <span className="block font-normal text-5xl sm:text-7xl md:text-8xl -mt-1 hero-anim hero-reveal"
-                        style={{ letterSpacing: '-0.08em', animationDelay: '0.42s' }}>tales of time</span>
-                </h1>
-            </div>
-
-            {/* Bottom paragraph */}
-            <div className="hidden sm:block absolute bottom-14 left-10 md:left-14 max-w-[260px] z-50 hero-anim hero-fade"
-                style={{ animationDelay: '0.7s' }}>
-                <p className="text-sm text-white/80 leading-relaxed">
-                    每一层沉积都记录着地球的一章，从古老的海床到飘落的火山灰，在脚下绵延数百万年。
-                </p>
-            </div>
-
-            {/* Bottom right - Auth Card */}
-            <div className="absolute bottom-10 sm:bottom-24 left-5 right-5 sm:left-auto sm:right-10 md:right-14 max-w-full sm:max-w-[340px] z-50 hero-anim hero-fade"
-                style={{ animationDelay: '0.85s' }}>
-                <div className="bg-black/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-                    {/* Tabs */}
-                    <div className="flex mb-5 bg-white/5 rounded-lg p-0.5">
-                        <button onClick={() => mode !== 'login' && switchMode()}
-                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === 'login' ? 'bg-[#e8702a] text-white' : 'text-white/60 hover:text-white'}`}>登录</button>
-                        <button onClick={() => mode !== 'register' && switchMode()}
-                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === 'register' ? 'bg-[#e8702a] text-white' : 'text-white/60 hover:text-white'}`}>注册</button>
-                    </div>
-
-                    {successMsg && <div className="mb-4 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs p-3 rounded-xl">{successMsg}</div>}
+                    {successMsg && <div className="mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl">{successMsg}</div>}
 
                     {mode === 'register' && (
-                        <div className="space-y-3">
+                        <div className="space-y-3.5 text-left">
+                            <h2 className="text-lg font-bold text-white text-center">创建账号</h2>
                             <input type="text" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} />
                             <div className="flex gap-2">
                                 <input type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)} className={`flex-1 ${inputClass}`} />
                                 <button onClick={handleSendCode} disabled={!canSendCode}
-                                    className={`px-3 py-3 font-bold rounded-xl transition-all text-xs whitespace-nowrap ${countdown > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-[#e8702a]/20 text-[#e8702a] border border-[#e8702a]/30 hover:bg-[#e8702a]/30'} disabled:opacity-40 disabled:cursor-not-allowed`}>
-                                    {loading ? <Loader2 className="animate-spin" size={16} /> : countdown > 0 ? `${countdown}s` : '发送'}
+                                    className={`px-3 py-3 font-bold rounded-xl transition-all text-xs whitespace-nowrap ${countdown > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-[#00FF9D]/10 text-[#00FF9D] border border-[#00FF9D]/20 hover:bg-[#00FF9D]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}>
+                                    {loading ? <Loader2 className="animate-spin" size={16} /> : countdown > 0 ? `${countdown}s` : '发送验证码'}
                                 </button>
                             </div>
                             {message && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-3 rounded-xl">{message}</div>}
                             {codeSent && (
                                 <div>
-                                    <p className="text-white/40 text-xs mb-2">请输入6位验证码</p>
-                                    <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
+                                    <p className="text-gray-500 text-xs mb-2">请输入6位验证码</p>
+                                    <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
                                         {otp.map((d, i) => (
                                             <input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
                                                 onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                                disabled={loading} className={`w-10 h-12 bg-white/5 border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#e8702a]' : 'border-white/10 focus:border-white/30'} ${loading ? 'opacity-50' : ''}`} />
+                                                disabled={loading} className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
                                         ))}
                                     </div>
                                 </div>
@@ -1752,44 +1635,51 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
                             <div className="relative">
                                 <input type={showPassword ? 'text' : 'password'} placeholder="密码（至少8个字符）" value={password}
                                     onChange={(e) => setPassword(e.target.value)} className={inputClass + ' pr-10'} />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
                                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
                             <label className="flex items-start gap-2 cursor-pointer">
-                                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 accent-[#e8702a]" />
-                                <span className="text-white/40 text-xs text-left">我已阅读并同意服务条款和隐私政策</span>
+                                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 accent-[#00FF9D]" />
+                                <span className="text-gray-500 text-xs text-left">我已阅读并同意服务条款和隐私政策</span>
                             </label>
                             {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
                             <button onClick={handleRegister} disabled={!canRegister}
-                                className="w-full bg-[#e8702a] hover:bg-[#d2611f] disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all text-sm hover:shadow-lg hover:shadow-[#e8702a]/30 active:scale-[0.98]">
+                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
                                 {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : '注册'}
                             </button>
+                            <div className="text-center pt-1">
+                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">已有账号？去登录</button>
+                            </div>
                         </div>
                     )}
 
                     {mode === 'login' && (
-                        <div className="space-y-3">
+                        <div className="space-y-4 text-left">
+                            <h2 className="text-lg font-bold text-white text-center">登录</h2>
                             <input type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()} className={inputClass} />
                             <div className="relative">
                                 <input type={showPassword ? 'text' : 'password'} placeholder="密码" value={password}
                                     onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()}
                                     className={inputClass + ' pr-10'} />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
                                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
                             {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
                             <button onClick={handleLogin} disabled={!canLogin}
-                                className="w-full bg-[#e8702a] hover:bg-[#d2611f] disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all text-sm hover:shadow-lg hover:shadow-[#e8702a]/30 active:scale-[0.98]">
+                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
                                 {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : '登录'}
                             </button>
+                            <div className="text-center pt-1">
+                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">还没有账号？去注册 →</button>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
-        </section>
+        </div>
     );
 };
 
