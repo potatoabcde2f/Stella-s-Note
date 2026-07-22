@@ -1658,7 +1658,16 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
         if (!canLogin) return; setLoading(true); setError('');
         try {
             const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-            if (error) { if (error.message.includes('Invalid login credentials')) throw new Error('邮箱或密码错误'); throw error; }
+            if (error) {
+                if (error.message.includes('Invalid login credentials')) {
+                    // 登录失败 → 自动跳转注册，保留邮箱
+                    setMessage('该账号未注册，已自动为您跳转注册页面');
+                    setMode('register');
+                    setPassword('');
+                    return;
+                }
+                throw error;
+            }
         } catch (err: any) { setError(err.message || '登录失败'); }
         finally { setLoading(false); }
     };
