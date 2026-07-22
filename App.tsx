@@ -1501,7 +1501,6 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
 
 const AuthScreen = () => {
     const [mode, setMode] = useState<'login' | 'register'>('login');
-    const [step, setStep] = useState<'form' | 'otp' | 'done'>('form');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -1512,10 +1511,11 @@ const AuthScreen = () => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [countdown, setCountdown] = useState(0);
+    const [codeSent, setCodeSent] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
     const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-    useEffect(() => { if (step === 'otp') setTimeout(() => otpRefs.current[0]?.focus(), 200); }, [step]);
+    useEffect(() => { if (codeSent && otpRefs.current[0]) setTimeout(() => otpRefs.current[0]?.focus(), 200); }, [codeSent]);
     useEffect(() => { if (countdown > 0) { const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); } }, [countdown]);
 
     const isEmailValid = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -1523,14 +1523,26 @@ const AuthScreen = () => {
     const canRegister = !!username.trim() && isEmailValid(email) && password.length >= 8 && otp.join('').length === 6 && agreeTerms && !loading;
     const canLogin = isEmailValid(email) && !!password && !loading;
 
-    // Send verification code
+    // Send verification code with registered email check
     const handleSendCode = async () => {
         if (!isEmailValid(email)) { setError('Please enter a valid email'); return; }
         setError(''); setMessage(''); setLoading(true);
         try {
-            const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
+            // Step 1: Check if email already exists — signInWithOtp without shouldCreateUser only works for existing users
+            const { error: checkError } = await supabase.auth.signInWithOtp({ email: email.trim() });
+            if (!checkError) {
+                // Email exists — code was sent to existing user, show toast
+                throw new Error('该邮箱已注册，请换个邮箱注册');
+            }
+            // Email doesn't exist — now send code with user creation
+            const { error } = await supabase.auth.signInWithOtp({
+                email: email.trim(),
+                options: { shouldCreateUser: true }
+            });
             if (error) throw error;
-            setMessage('Verification code sent to ' + email); setStep('otp'); setCountdown(60);
+            setMessage('Verification code sent! Please check your email.');
+            setCodeSent(true);
+            setCountdown(60);
         } catch (err: any) { setError(err.message || 'Failed to send code'); }
         finally { setLoading(false); }
     };
@@ -1565,7 +1577,7 @@ const AuthScreen = () => {
             await supabase.auth.updateUser({ password, data: { username } });
             await supabase.auth.signOut();
             setSuccessMsg('Account created! Please sign in.');
-            setMode('login'); setStep('form');
+            setMode('login'); setCodeSent(false);
             setOtp(Array(6).fill('')); setPassword(''); setUsername(''); setAgreeTerms(false);
         } catch (err: any) { setError(err.message || 'Registration failed'); }
         finally { setLoading(false); }
@@ -1587,7 +1599,7 @@ const AuthScreen = () => {
 
     const switchMode = () => {
         setMode(mode === 'login' ? 'register' : 'login');
-        setError(''); setMessage(''); setStep('form');
+        setError(''); setMessage(''); setCodeSent(false);
         setOtp(Array(6).fill('')); setPassword(''); setUsername(''); setSuccessMsg('');
     };
 
@@ -1604,11 +1616,13 @@ const AuthScreen = () => {
 
                     {successMsg && <div className="mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl">{successMsg}</div>}
 
-                    {mode === 'register' && step === 'form' && (
+                    {mode === 'register' && (
                         <div className="space-y-3.5 text-left">
                             <h2 className="text-lg font-bold text-white text-center">Create Account</h2>
+
                             <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)}
                                 className={inputClass} />
+
                             <div className="flex gap-2">
                                 <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
                                     className={`flex-1 ${inputClass}`} />
@@ -1617,15 +1631,18 @@ const AuthScreen = () => {
                                     {loading ? <Loader2 className="animate-spin" size={16} /> : countdown > 0 ? `${countdown}s` : 'Send Code'}
                                 </button>
                             </div>
+
                             {message && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-3 rounded-xl">{message}</div>}
 
-                            <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
-                                {otp.map((d, i) => (
-                                    <input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
-                                        onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                        disabled={loading} className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
-                                ))}
-                            </div>
+                            {codeSent && (
+                                <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
+                                    {otp.map((d, i) => (
+                                        <input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
+                                            onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                                            disabled={loading} className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
+                                    ))}
+                                </div>
+                            )}
 
                             <div className="relative">
                                 <input type={showPassword ? 'text' : 'password'} placeholder="Password (min. 8 characters)" value={password}
