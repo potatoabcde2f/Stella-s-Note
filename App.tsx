@@ -1637,6 +1637,15 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
         try {
             const { error: verifyErr } = await supabase.auth.verifyOtp({ email: email.trim(), token: otp.join(''), type: 'email' });
             if (verifyErr) throw new Error('验证码无效或已过期');
+            // 验证通过后检查该邮箱是否已有画板数据（判断是否已注册过）
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData?.session?.user?.id) {
+                const { data: existingBoards } = await supabase.from('boards').select('id').eq('user_id', sessionData.session.user.id).limit(1);
+                if (existingBoards && existingBoards.length > 0) {
+                    await supabase.auth.signOut();
+                    throw new Error('该邮箱已被注册，请直接登录');
+                }
+            }
             await supabase.auth.updateUser({ password, data: { username } });
             await supabase.auth.signOut();
             if (registerLockRef) registerLockRef.current = false;
