@@ -5,9 +5,10 @@ import {
   CheckSquare, Type, Box, Globe, ExternalLink, Layout,
   Quote, FileIcon, ImageIcon, Download, Table as TableIcon,
   AlignLeft, AlignCenter, AlignRight, Calendar, GripVertical, X, MoreVertical, Maximize2, Upload, RefreshCw,
-  Home, FolderPlus, Edit2, ChevronLeft
+  Home, FolderPlus, Edit2, ChevronLeft, LogOut, Loader2, Mail, Lock, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { generateTextEnhancement } from './services/geminiService';
+import { supabase } from './services/supabaseClient';
 import { CanvasElement, Point, ViewTransform, Board, Connection, ElementType, TodoItem, DragInfo } from './types';
 import { COLORS, TOOLS, INITIAL_BOARD_ID, PALETTE } from './constants';
 
@@ -1362,7 +1363,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
 
 // --- Home Dashboard ---
 
-const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUpdateBoard, onReorderBoards }: any) => {
+const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUpdateBoard, onReorderBoards, onLogout }: any) => {
     const [isCreating, setIsCreating] = useState(false);
     const [newBoardName, setNewBoardName] = useState('');
     const [newBoardIcon, setNewBoardIcon] = useState('📁');
@@ -1397,11 +1398,16 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
 
     return (
         <div className="min-h-screen bg-[#121212] text-white p-10 font-sans">
-            <header className="mb-12 flex items-center gap-4">
-                 <div className="w-10 h-10 bg-[#00FF9D] rounded-lg flex items-center justify-center text-black">
-                     <Sparkles size={20} />
-                 </div>
-                 <h1 className="text-3xl font-bold font-serif tracking-tight">Stella's Note</h1>
+            <header className="mb-12 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-[#00FF9D] rounded-lg flex items-center justify-center text-black"><Sparkles size={20} /></div>
+                    <h1 className="text-3xl font-bold font-serif tracking-tight">Stella's Note</h1>
+                </div>
+                {onLogout && (
+                    <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white bg-[#1E1E1E] hover:bg-[#2A2A2A] rounded-xl transition-colors">
+                        <LogOut size={16} /> Sign Out
+                    </button>
+                )}
             </header>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -1491,85 +1497,199 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
     );
 };
 
-// --- Root App with Local Persistence ---
+// --- Auth Screen (Email OTP) ---
+
+const AuthScreen = () => {
+    const [page, setPage] = useState<'email' | 'otp' | 'done'>('email');
+    const [email, setEmail] = useState('');
+    const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
+    const [countdown, setCountdown] = useState(0);
+    const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+    useEffect(() => {
+        if (page === 'otp') setTimeout(() => otpRefs.current[0]?.focus(), 200);
+    }, [page]);
+    useEffect(() => {
+        if (countdown > 0) { const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); }
+    }, [countdown]);
+
+    const handleSendCode = async () => {
+        if (!email.trim()) { setError('Enter your email'); return; }
+        setError(''); setMessage(''); setLoading(true);
+        try {
+            const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
+            if (error) throw error;
+            setMessage('Code sent! Check your email.'); setPage('otp'); setCountdown(60);
+        } catch (err: any) { setError(err.message || 'Failed to send'); }
+        finally { setLoading(false); }
+    };
+
+    const handleOtpChange = (i: number, v: string) => {
+        if (v && !/^\d$/.test(v)) return;
+        const n = [...otp]; n[i] = v; setOtp(n);
+        if (error) setError('');
+        if (v && i < 5) otpRefs.current[i + 1]?.focus();
+        if (n.join('').length === 6) handleVerify(n.join(''));
+    };
+    const handleOtpKeyDown = (i: number, e: React.KeyboardEvent) => {
+        if (e.key === 'Backspace') {
+            if (!otp[i] && i > 0) { const n = [...otp]; n[i - 1] = ''; setOtp(n); otpRefs.current[i - 1]?.focus(); }
+            else { const n = [...otp]; n[i] = ''; setOtp(n); }
+        }
+    };
+    const handleOtpPaste = (e: React.ClipboardEvent) => {
+        e.preventDefault();
+        const p = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        if (p.length !== 6) return;
+        setOtp(p.split('')); handleVerify(p);
+    };
+    const handleVerify = async (code?: string) => {
+        const token = code || otp.join('');
+        if (token.length < 4) return;
+        setLoading(true); setError('');
+        try {
+            const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token, type: 'email' });
+            if (error) throw error;
+            setPage('done');
+        } catch (err: any) { setError(err.message || 'Invalid code'); setOtp(Array(6).fill('')); otpRefs.current[0]?.focus(); }
+        finally { setLoading(false); }
+    };
+    const handleResend = async () => { if (countdown > 0 || loading) return; setOtp(Array(6).fill('')); await handleSendCode(); };
+
+    return (
+        <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
+            <div className="w-full max-w-sm text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-[#141414] border border-[#222] rounded-2xl mb-4 text-[#00FF9D] shadow-lg"><Sparkles size={28} /></div>
+                <h1 className="text-2xl font-bold text-white font-playfair mb-8">Stella's Note</h1>
+                <div className="bg-[#141414] border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00FF9D] via-[#00B8FF] to-[#FF00FF]" />
+
+                    {page === 'email' && (
+                        <div className="space-y-5">
+                            <p className="text-gray-400 text-sm">Sign in with your email</p>
+                            <input type="email" placeholder="your@email.com" required autoFocus value={email}
+                                onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendCode()}
+                                className="w-full bg-[#0A0A0A] border border-[#222] rounded-xl px-4 py-3.5 text-white text-sm focus:border-[#00FF9D] outline-none transition-all placeholder:text-gray-700" />
+                            {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
+                            {message && <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl">{message}</div>}
+                            <button onClick={handleSendCode} disabled={loading || !email.trim()}
+                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
+                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Send Verification Code'}
+                            </button>
+                        </div>
+                    )}
+                    {page === 'otp' && (
+                        <div className="space-y-5">
+                            <p className="text-gray-400 text-sm">Enter code sent to</p>
+                            <p className="text-white text-sm font-medium">{email}</p>
+                            <button onClick={() => { setPage('email'); setOtp(Array(6).fill('')); setError(''); }} className="text-[#00FF9D] text-xs hover:underline">Change</button>
+                            <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
+                                {otp.map((d, i) => (
+                                    <input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
+                                        onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                                        disabled={loading} autoComplete="one-time-code"
+                                        className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
+                                ))}
+                            </div>
+                            {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
+                            <button onClick={() => handleVerify()} disabled={loading || otp.join('').length !== 6}
+                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
+                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Sign In'}
+                            </button>
+                            <div className="text-center">
+                                <button onClick={handleResend} disabled={countdown > 0 || loading}
+                                    className="text-gray-600 hover:text-white text-xs disabled:text-gray-800 disabled:cursor-not-allowed transition-colors">
+                                    {countdown > 0 ? `Resend in ${countdown}s` : 'Resend code'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {page === 'done' && (
+                        <div className="text-center py-8">
+                            <div className="w-16 h-16 mx-auto bg-[#00FF9D]/10 rounded-full flex items-center justify-center mb-4"><CheckCircle2 className="text-[#00FF9D]" size={32} /></div>
+                            <p className="text-white font-bold text-lg">Welcome!</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Root App with Auth + Supabase Sync ---
 
 export default function App() {
-    // Initialize state from localStorage if available, otherwise default
-    const [boards, setBoards] = useState<Board[]>(() => {
-        try {
-            const saved = localStorage.getItem('stella-boards');
-            if (saved) {
-                return JSON.parse(saved);
-            }
-        } catch (e) {
-            console.error("Failed to load from localStorage", e);
-        }
-        return [{
-            id: INITIAL_BOARD_ID,
-            name: 'Welcome Board',
-            icon: '👋',
-            elements: [],
-            connections: [],
-            lastModified: Date.now(),
-            viewport: { x: 0, y: 0, zoom: 1 }
-        }];
-    });
-    
+    const [session, setSession] = useState<any>(null);
+    const [authLoading, setAuthLoading] = useState(true);
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setAuthLoading(false); });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { setSession(session); setAuthLoading(false); });
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const [boards, setBoards] = useState<Board[]>([]);
+    const [boardLoading, setBoardLoading] = useState(true);
     const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
 
-    // Persist to localStorage whenever boards change
     useEffect(() => {
-        try {
-            localStorage.setItem('stella-boards', JSON.stringify(boards));
-        } catch (e) {
-            console.error("Failed to save to localStorage", e);
-        }
-    }, [boards]);
+        if (!session) { setBoardLoading(false); setBoards([]); return; }
+        setBoardLoading(true);
+        supabase.from('boards').select('*').eq('user_id', session.user.id).order('last_modified', { ascending: false })
+            .then(({ data, error }) => {
+                if (error) { console.warn('Sync error:', error.message); setBoardLoading(false); return; }
+                if (data && data.length > 0) {
+                    setBoards(data.map((b: any) => ({
+                        id: b.id, name: b.name, icon: b.icon || '📁',
+                        elements: b.data?.elements || [], connections: b.data?.connections || [],
+                        viewport: b.data?.viewport || { x: 0, y: 0, zoom: 1 }, lastModified: b.last_modified,
+                    })));
+                } else {
+                    const welcome = { id: INITIAL_BOARD_ID, name: 'Welcome Board', icon: '👋', elements: [], connections: [], lastModified: Date.now(), viewport: { x: 0, y: 0, zoom: 1 } };
+                    setBoards([welcome]);
+                    supabase.from('boards').insert({ id: welcome.id, user_id: session.user.id, name: welcome.name, icon: welcome.icon,
+                        data: { elements: welcome.elements, connections: welcome.connections, viewport: welcome.viewport }, last_modified: welcome.lastModified }).then(() => {}, () => {});
+                }
+                setBoardLoading(false);
+            });
+    }, [session?.user?.id]);
+
+    useEffect(() => {
+        if (!session || boards.length === 0) return;
+        const timeout = setTimeout(() => {
+            for (const board of boards) {
+                supabase.from('boards').upsert({ id: board.id, user_id: session.user.id, name: board.name, icon: board.icon || '📁',
+                    data: { elements: board.elements, connections: board.connections, viewport: board.viewport, trashed: board.trashed || false },
+                    last_modified: Date.now() }).then(() => {}, () => {});
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [session?.user?.id, boards]);
 
     const activeBoard = boards.find(b => b.id === activeBoardId);
 
     const handleCreateBoard = (name: string, icon: string) => {
-        const newBoard: Board = {
-            id: generateId(),
-            name,
-            icon,
-            elements: [],
-            connections: [],
-            lastModified: Date.now(),
-            viewport: { x: 0, y: 0, zoom: 1 }
-        };
+        const newBoard: Board = { id: crypto.randomUUID(), name, icon, elements: [], connections: [], lastModified: Date.now(), viewport: { x: 0, y: 0, zoom: 1 } };
         setBoards([...boards, newBoard]);
     };
-
-    const handleDeleteBoard = (id: string) => {
-        setBoards(boards.filter(b => b.id !== id));
-    };
-
-    const handleUpdateBoard = (updatedBoard: Board) => {
-        setBoards(boards.map(b => b.id === updatedBoard.id ? updatedBoard : b));
-    };
-    
+    const handleDeleteBoard = (id: string) => setBoards(boards.filter(b => b.id !== id));
+    const handleUpdateBoard = (updatedBoard: Board) => setBoards(boards.map(b => b.id === updatedBoard.id ? updatedBoard : b));
     const handleReorderBoards = (fromIndex: number, toIndex: number) => {
-        const newBoards = [...boards];
-        const [moved] = newBoards.splice(fromIndex, 1);
-        newBoards.splice(toIndex, 0, moved);
-        setBoards(newBoards);
+        const newBoards = [...boards]; const [moved] = newBoards.splice(fromIndex, 1); newBoards.splice(toIndex, 0, moved); setBoards(newBoards);
     };
+    const handleLogout = () => supabase.auth.signOut();
+
+    if (authLoading) return <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="text-[#00FF9D] animate-spin" size={48} /></div>;
+    if (!session) return <AuthScreen />;
 
     return activeBoardId && activeBoard ? (
-        <CanvasWorkspace 
-            board={activeBoard} 
-            onSave={handleUpdateBoard} 
-            onBack={() => setActiveBoardId(null)} 
-        />
+        <CanvasWorkspace board={activeBoard} onSave={handleUpdateBoard} onBack={() => setActiveBoardId(null)} />
     ) : (
-        <HomeDashboard 
-            boards={boards} 
-            onOpenBoard={setActiveBoardId} 
-            onCreateBoard={handleCreateBoard} 
-            onDeleteBoard={handleDeleteBoard}
-            onReorderBoards={handleReorderBoards}
-        />
+        <HomeDashboard boards={boards} onOpenBoard={setActiveBoardId} onCreateBoard={handleCreateBoard} onDeleteBoard={handleDeleteBoard}
+            onUpdateBoard={handleUpdateBoard} onReorderBoards={handleReorderBoards} onLogout={handleLogout} />
     );
 }
     
