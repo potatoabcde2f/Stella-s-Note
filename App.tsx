@@ -5,7 +5,7 @@ import {
   CheckSquare, Type, Box, Globe, ExternalLink, Layout,
   Quote, FileIcon, ImageIcon, Download, Table as TableIcon,
   AlignLeft, AlignCenter, AlignRight, Calendar, GripVertical, X, MoreVertical, Maximize2, Upload, RefreshCw,
-  Home, FolderPlus, Edit2, ChevronLeft, LogOut, Loader2, Mail, Lock, CheckCircle2, AlertCircle
+  Home, FolderPlus, Edit2, ChevronLeft, LogOut, Loader2, Mail, Lock, CheckCircle2, AlertCircle, Eye, EyeOff
 } from 'lucide-react';
 import { generateTextEnhancement } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
@@ -1497,42 +1497,50 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
     );
 };
 
-// --- Auth Screen (Email OTP) ---
+// --- Auth Screen ---
 
 const AuthScreen = () => {
-    const [page, setPage] = useState<'email' | 'otp' | 'done'>('email');
+    const [mode, setMode] = useState<'login' | 'register'>('login');
+    const [step, setStep] = useState<'form' | 'otp' | 'done'>('form');
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
+    const [agreeTerms, setAgreeTerms] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [countdown, setCountdown] = useState(0);
+    const [successMsg, setSuccessMsg] = useState('');
     const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-    useEffect(() => {
-        if (page === 'otp') setTimeout(() => otpRefs.current[0]?.focus(), 200);
-    }, [page]);
-    useEffect(() => {
-        if (countdown > 0) { const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); }
-    }, [countdown]);
+    useEffect(() => { if (step === 'otp') setTimeout(() => otpRefs.current[0]?.focus(), 200); }, [step]);
+    useEffect(() => { if (countdown > 0) { const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); } }, [countdown]);
 
+    const isEmailValid = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+    const canSendCode = isEmailValid(email) && !loading && countdown === 0;
+    const canRegister = !!username.trim() && isEmailValid(email) && password.length >= 8 && otp.join('').length === 6 && agreeTerms && !loading;
+    const canLogin = isEmailValid(email) && !!password && !loading;
+
+    // Send verification code
     const handleSendCode = async () => {
-        if (!email.trim()) { setError('Enter your email'); return; }
+        if (!isEmailValid(email)) { setError('Please enter a valid email'); return; }
         setError(''); setMessage(''); setLoading(true);
         try {
             const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
             if (error) throw error;
-            setMessage('Code sent! Check your email.'); setPage('otp'); setCountdown(60);
-        } catch (err: any) { setError(err.message || 'Failed to send'); }
+            setMessage('Verification code sent to ' + email); setStep('otp'); setCountdown(60);
+        } catch (err: any) { setError(err.message || 'Failed to send code'); }
         finally { setLoading(false); }
     };
 
+    // OTP handlers
     const handleOtpChange = (i: number, v: string) => {
         if (v && !/^\d$/.test(v)) return;
         const n = [...otp]; n[i] = v; setOtp(n);
         if (error) setError('');
         if (v && i < 5) otpRefs.current[i + 1]?.focus();
-        if (n.join('').length === 6) handleVerify(n.join(''));
     };
     const handleOtpKeyDown = (i: number, e: React.KeyboardEvent) => {
         if (e.key === 'Backspace') {
@@ -1544,73 +1552,127 @@ const AuthScreen = () => {
         e.preventDefault();
         const p = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
         if (p.length !== 6) return;
-        setOtp(p.split('')); handleVerify(p);
+        setOtp(p.split(''));
     };
-    const handleVerify = async (code?: string) => {
-        const token = code || otp.join('');
-        if (token.length < 4) return;
+
+    // Register
+    const handleRegister = async () => {
+        if (!canRegister) return;
         setLoading(true); setError('');
         try {
-            const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token, type: 'email' });
-            if (error) throw error;
-            setPage('done');
-        } catch (err: any) { setError(err.message || 'Invalid code'); setOtp(Array(6).fill('')); otpRefs.current[0]?.focus(); }
+            const { error: verifyErr } = await supabase.auth.verifyOtp({ email: email.trim(), token: otp.join(''), type: 'email' });
+            if (verifyErr) throw new Error('Invalid or expired verification code');
+            await supabase.auth.updateUser({ password, data: { username } });
+            await supabase.auth.signOut();
+            setSuccessMsg('Account created! Please sign in.');
+            setMode('login'); setStep('form');
+            setOtp(Array(6).fill('')); setPassword(''); setUsername(''); setAgreeTerms(false);
+        } catch (err: any) { setError(err.message || 'Registration failed'); }
         finally { setLoading(false); }
     };
-    const handleResend = async () => { if (countdown > 0 || loading) return; setOtp(Array(6).fill('')); await handleSendCode(); };
+
+    // Login
+    const handleLogin = async () => {
+        if (!canLogin) return;
+        setLoading(true); setError('');
+        try {
+            const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+            if (error) {
+                if (error.message.includes('Invalid login credentials')) throw new Error('Email or password incorrect');
+                throw error;
+            }
+        } catch (err: any) { setError(err.message || 'Login failed'); }
+        finally { setLoading(false); }
+    };
+
+    const switchMode = () => {
+        setMode(mode === 'login' ? 'register' : 'login');
+        setError(''); setMessage(''); setStep('form');
+        setOtp(Array(6).fill('')); setPassword(''); setUsername(''); setSuccessMsg('');
+    };
+
+    const inputClass = "w-full bg-[#0A0A0A] border border-[#222] rounded-xl px-4 py-3 text-white text-sm focus:border-[#00FF9D] outline-none transition-all placeholder:text-gray-700";
 
     return (
         <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
             <div className="w-full max-w-sm text-center">
                 <div className="inline-flex items-center justify-center w-14 h-14 bg-[#141414] border border-[#222] rounded-2xl mb-4 text-[#00FF9D] shadow-lg"><Sparkles size={28} /></div>
                 <h1 className="text-2xl font-bold text-white font-playfair mb-8">Stella's Note</h1>
+
                 <div className="bg-[#141414] border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00FF9D] via-[#00B8FF] to-[#FF00FF]" />
 
-                    {page === 'email' && (
-                        <div className="space-y-5">
-                            <p className="text-gray-400 text-sm">Sign in with your email</p>
-                            <input type="email" placeholder="your@email.com" required autoFocus value={email}
-                                onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendCode()}
-                                className="w-full bg-[#0A0A0A] border border-[#222] rounded-xl px-4 py-3.5 text-white text-sm focus:border-[#00FF9D] outline-none transition-all placeholder:text-gray-700" />
-                            {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
-                            {message && <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl">{message}</div>}
-                            <button onClick={handleSendCode} disabled={loading || !email.trim()}
-                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
-                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Send Verification Code'}
-                            </button>
-                        </div>
-                    )}
-                    {page === 'otp' && (
-                        <div className="space-y-5">
-                            <p className="text-gray-400 text-sm">Enter code sent to</p>
-                            <p className="text-white text-sm font-medium">{email}</p>
-                            <button onClick={() => { setPage('email'); setOtp(Array(6).fill('')); setError(''); }} className="text-[#00FF9D] text-xs hover:underline">Change</button>
+                    {successMsg && <div className="mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl">{successMsg}</div>}
+
+                    {mode === 'register' && step === 'form' && (
+                        <div className="space-y-3.5 text-left">
+                            <h2 className="text-lg font-bold text-white text-center">Create Account</h2>
+                            <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)}
+                                className={inputClass} />
+                            <div className="flex gap-2">
+                                <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+                                    className={`flex-1 ${inputClass}`} />
+                                <button onClick={handleSendCode} disabled={!canSendCode}
+                                    className={`px-3 py-3 font-bold rounded-xl transition-all text-xs whitespace-nowrap ${countdown > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-[#00FF9D]/10 text-[#00FF9D] border border-[#00FF9D]/20 hover:bg-[#00FF9D]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}>
+                                    {loading ? <Loader2 className="animate-spin" size={16} /> : countdown > 0 ? `${countdown}s` : 'Send Code'}
+                                </button>
+                            </div>
+                            {message && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-3 rounded-xl">{message}</div>}
+
                             <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
                                 {otp.map((d, i) => (
                                     <input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
                                         onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                        disabled={loading} autoComplete="one-time-code"
-                                        className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
+                                        disabled={loading} className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
                                 ))}
                             </div>
-                            {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
-                            <button onClick={() => handleVerify()} disabled={loading || otp.join('').length !== 6}
-                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
-                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Sign In'}
-                            </button>
-                            <div className="text-center">
-                                <button onClick={handleResend} disabled={countdown > 0 || loading}
-                                    className="text-gray-600 hover:text-white text-xs disabled:text-gray-800 disabled:cursor-not-allowed transition-colors">
-                                    {countdown > 0 ? `Resend in ${countdown}s` : 'Resend code'}
+
+                            <div className="relative">
+                                <input type={showPassword ? 'text' : 'password'} placeholder="Password (min. 8 characters)" value={password}
+                                    onChange={(e) => setPassword(e.target.value)} className={inputClass + ' pr-10'} />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
+                            </div>
+
+                            <label className="flex items-start gap-2 cursor-pointer">
+                                <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 accent-[#00FF9D]" />
+                                <span className="text-gray-500 text-xs text-left">I agree to the Terms of Service and Privacy Policy</span>
+                            </label>
+
+                            {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
+                            <button onClick={handleRegister} disabled={!canRegister}
+                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
+                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Register'}
+                            </button>
+                            <div className="text-center pt-1">
+                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">Already have an account? Sign In</button>
                             </div>
                         </div>
                     )}
-                    {page === 'done' && (
-                        <div className="text-center py-8">
-                            <div className="w-16 h-16 mx-auto bg-[#00FF9D]/10 rounded-full flex items-center justify-center mb-4"><CheckCircle2 className="text-[#00FF9D]" size={32} /></div>
-                            <p className="text-white font-bold text-lg">Welcome!</p>
+
+                    {mode === 'login' && (
+                        <div className="space-y-4 text-left">
+                            <h2 className="text-lg font-bold text-white text-center">Sign In</h2>
+                            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()}
+                                className={inputClass} />
+                            <div className="relative">
+                                <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
+                                    onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()}
+                                    className={inputClass + ' pr-10'} />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                            {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
+                            <button onClick={handleLogin} disabled={!canLogin}
+                                className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
+                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Sign In'}
+                            </button>
+                            <div className="text-center pt-1">
+                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">No account yet? Register →</button>
+                            </div>
                         </div>
                     )}
                 </div>
