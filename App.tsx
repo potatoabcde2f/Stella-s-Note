@@ -1363,7 +1363,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
 
 // --- Home Dashboard ---
 
-const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUpdateBoard, onReorderBoards, onLogout }: any) => {
+const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUpdateBoard, onReorderBoards, onLogout, username }: any) => {
     const [isCreating, setIsCreating] = useState(false);
     const [newBoardName, setNewBoardName] = useState('');
     const [newBoardIcon, setNewBoardIcon] = useState('📁');
@@ -1403,11 +1403,14 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
                     <div className="w-10 h-10 bg-[#00FF9D] rounded-lg flex items-center justify-center text-black"><Sparkles size={20} /></div>
                     <h1 className="text-3xl font-bold font-serif tracking-tight">Stella's Note</h1>
                 </div>
-                {onLogout && (
-                    <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white bg-[#1E1E1E] hover:bg-[#2A2A2A] rounded-xl transition-colors">
-                        <LogOut size={16} /> Sign Out
-                    </button>
-                )}
+                <div className="flex items-center gap-3">
+                    {username && <span className="text-sm text-gray-500">{username}</span>}
+                    {onLogout && (
+                        <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white bg-[#1E1E1E] hover:bg-[#2A2A2A] rounded-xl transition-colors">
+                            <LogOut size={16} /> 退出
+                        </button>
+                    )}
+                </div>
             </header>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -1499,7 +1502,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
 
 // --- Auth Screen ---
 
-const AuthScreen = () => {
+const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObject<boolean> }) => {
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -1564,15 +1567,17 @@ const AuthScreen = () => {
     const handleRegister = async () => {
         if (!canRegister) return;
         setLoading(true); setError('');
+        if (registerLockRef) registerLockRef.current = true;
         try {
             const { error: verifyErr } = await supabase.auth.verifyOtp({ email: email.trim(), token: otp.join(''), type: 'email' });
             if (verifyErr) throw new Error('验证码无效或已过期');
             await supabase.auth.updateUser({ password, data: { username } });
             await supabase.auth.signOut();
+            if (registerLockRef) registerLockRef.current = false;
             setSuccessMsg('注册成功！请登录');
             setMode('login'); setCodeSent(false);
             setOtp(Array(6).fill('')); setPassword(''); setUsername(''); setAgreeTerms(false);
-        } catch (err: any) { setError(err.message || 'Registration failed'); }
+        } catch (err: any) { setError(err.message || '注册失败'); if (registerLockRef) registerLockRef.current = false; }
         finally { setLoading(false); }
     };
 
@@ -1699,10 +1704,14 @@ const AuthScreen = () => {
 export default function App() {
     const [session, setSession] = useState<any>(null);
     const [authLoading, setAuthLoading] = useState(true);
+    const registerLockRef = useRef(false);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setAuthLoading(false); });
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { setSession(session); setAuthLoading(false); });
+        supabase.auth.getSession().then(({ data: { session } }) => { if (!registerLockRef.current) setSession(session); setAuthLoading(false); });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (!registerLockRef.current) setSession(session);
+            setAuthLoading(false);
+        });
         return () => subscription.unsubscribe();
     }, []);
 
@@ -1723,10 +1732,10 @@ export default function App() {
                         viewport: b.data?.viewport || { x: 0, y: 0, zoom: 1 }, lastModified: b.last_modified,
                     })));
                 } else {
-                    const welcome = { id: INITIAL_BOARD_ID, name: 'Welcome Board', icon: '👋', elements: [], connections: [], lastModified: Date.now(), viewport: { x: 0, y: 0, zoom: 1 } };
+                    const welcome = { id: crypto.randomUUID(), name: 'Welcome Board', icon: '👋', elements: [], connections: [], lastModified: Date.now(), viewport: { x: 0, y: 0, zoom: 1 } };
                     setBoards([welcome]);
                     supabase.from('boards').insert({ id: welcome.id, user_id: session.user.id, name: welcome.name, icon: welcome.icon,
-                        data: { elements: welcome.elements, connections: welcome.connections, viewport: welcome.viewport }, last_modified: welcome.lastModified }).then(() => {}, () => {});
+                        data: { elements: welcome.elements, connections: welcome.connections, viewport: welcome.viewport }, last_modified: welcome.lastModified }).then(() => {}, (e: any) => console.warn('DB insert error:', e));
                 }
                 setBoardLoading(false);
             });
@@ -1738,7 +1747,7 @@ export default function App() {
             for (const board of boards) {
                 supabase.from('boards').upsert({ id: board.id, user_id: session.user.id, name: board.name, icon: board.icon || '📁',
                     data: { elements: board.elements, connections: board.connections, viewport: board.viewport, trashed: board.trashed || false },
-                    last_modified: Date.now() }).then(() => {}, () => {});
+                    last_modified: Date.now() }).then(() => {}, (e: any) => console.warn('DB upsert error:', e));
             }
         }, 500);
         return () => clearTimeout(timeout);
@@ -1758,13 +1767,14 @@ export default function App() {
     const handleLogout = () => supabase.auth.signOut();
 
     if (authLoading) return <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center"><Loader2 className="text-[#00FF9D] animate-spin" size={48} /></div>;
-    if (!session) return <AuthScreen />;
+    if (!session) return <AuthScreen registerLockRef={registerLockRef} />;
 
     return activeBoardId && activeBoard ? (
         <CanvasWorkspace board={activeBoard} onSave={handleUpdateBoard} onBack={() => setActiveBoardId(null)} />
     ) : (
         <HomeDashboard boards={boards} onOpenBoard={setActiveBoardId} onCreateBoard={handleCreateBoard} onDeleteBoard={handleDeleteBoard}
-            onUpdateBoard={handleUpdateBoard} onReorderBoards={handleReorderBoards} onLogout={handleLogout} />
+            onUpdateBoard={handleUpdateBoard} onReorderBoards={handleReorderBoards} onLogout={handleLogout}
+            username={session?.user?.user_metadata?.username || ''} />
     );
 }
     
