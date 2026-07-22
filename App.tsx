@@ -158,33 +158,36 @@ const Lightbox = ({ url, onClose }: { url: string, onClose: () => void }) => {
 }
 
 const Toolbar = ({ activeTool, onSelectTool, onUndo, onRedo, onHome }: any) => (
-  <div className="fixed left-4 top-1/2 -translate-y-1/2 bg-[#1a1a1a] border border-[#333] rounded-2xl p-2 flex flex-col gap-3 shadow-2xl z-50">
-    <button onClick={onHome} className="p-2 text-[#00FF9D] hover:bg-[#00FF9D]/10 rounded-xl" title="Back to Home">
-        <Home size={20} />
-    </button>
-    <div className="h-px bg-[#333] my-1" />
-    {TOOLS.map((tool) => (
-      <button
-        key={tool.id}
-        onClick={() => onSelectTool(tool.type || 'select')}
-        className={`p-2 rounded-xl transition-all relative group ${
-          (activeTool === (tool.type || 'select')) 
-            ? 'bg-[#00FF9D] text-black shadow-[0_0_15px_rgba(0,255,157,0.4)]' 
-            : 'text-gray-400 hover:text-white hover:bg-[#2A2A2A]'
-        }`}
-        title={tool.label}
-      >
-        <tool.icon size={20} />
-      </button>
-    ))}
-    <div className="h-px bg-[#333] my-1" />
-    <button onClick={onUndo} className="p-2 text-gray-400 hover:text-white hover:bg-[#2A2A2A] rounded-xl">
-      <Undo size={20} />
-    </button>
-    <button onClick={onRedo} className="p-2 text-gray-400 hover:text-white hover:bg-[#2A2A2A] rounded-xl">
-      <Redo size={20} />
-    </button>
-  </div>
+  <>
+    {/* Desktop: vertical left sidebar */}
+    <div className="hidden sm:flex fixed left-4 top-1/2 -translate-y-1/2 bg-[#1a1a1a] border border-[#333] rounded-2xl p-2 flex-col gap-3 shadow-2xl z-50">
+      <button onClick={onHome} className="p-2 text-[#00FF9D] hover:bg-[#00FF9D]/10 rounded-xl" title="Back to Home"><Home size={20} /></button>
+      <div className="h-px bg-[#333] my-1" />
+      {TOOLS.map((tool) => (
+        <button key={tool.id} onClick={() => onSelectTool(tool.type || 'select')}
+          className={`p-2 rounded-xl transition-all relative group ${(activeTool === (tool.type || 'select')) ? 'bg-[#00FF9D] text-black shadow-[0_0_15px_rgba(0,255,157,0.4)]' : 'text-gray-400 hover:text-white hover:bg-[#2A2A2A]'}`} title={tool.label}>
+          <tool.icon size={20} />
+        </button>
+      ))}
+      <div className="h-px bg-[#333] my-1" />
+      <button onClick={onUndo} className="p-2 text-gray-400 hover:text-white hover:bg-[#2A2A2A] rounded-xl"><Undo size={20} /></button>
+      <button onClick={onRedo} className="p-2 text-gray-400 hover:text-white hover:bg-[#2A2A2A] rounded-xl"><Redo size={20} /></button>
+    </div>
+    {/* Mobile: horizontal bottom bar */}
+    <div className="sm:hidden fixed bottom-4 left-4 right-4 bg-[#1a1a1a] border border-[#333] rounded-2xl p-2 flex items-center justify-around gap-1 shadow-2xl z-50 overflow-x-auto">
+      <button onClick={onHome} className="p-2 text-[#00FF9D] hover:bg-[#00FF9D]/10 rounded-xl flex-shrink-0"><Home size={18} /></button>
+      <div className="w-px h-6 bg-[#333] flex-shrink-0" />
+      {TOOLS.slice(0, 6).map((tool) => (
+        <button key={tool.id} onClick={() => onSelectTool(tool.type || 'select')}
+          className={`p-2 rounded-xl transition-all flex-shrink-0 ${(activeTool === (tool.type || 'select')) ? 'bg-[#00FF9D] text-black' : 'text-gray-400 hover:text-white'}`} title={tool.label}>
+          <tool.icon size={18} />
+        </button>
+      ))}
+      <div className="w-px h-6 bg-[#333] flex-shrink-0" />
+      <button onClick={onUndo} className="p-2 text-gray-400 hover:text-white rounded-xl flex-shrink-0"><Undo size={18} /></button>
+      <button onClick={onRedo} className="p-2 text-gray-400 hover:text-white rounded-xl flex-shrink-0"><Redo size={18} /></button>
+    </div>
+  </>
 );
 
 const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
@@ -205,7 +208,7 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
   };
 
   return (
-    <div className="fixed right-4 top-20 w-72 bg-[#1a1a1a] border border-[#333] rounded-2xl p-5 shadow-2xl z-50 animate-in slide-in-from-right-10 duration-200" onPointerDown={(e) => e.stopPropagation()}>
+    <div className="fixed right-4 top-20 w-72 max-sm:right-2 max-sm:top-auto max-sm:bottom-20 max-sm:w-[calc(100%-16px)] max-sm:max-h-[50vh] max-sm:overflow-y-auto bg-[#1a1a1a] border border-[#333] rounded-2xl p-5 shadow-2xl z-50 animate-in slide-in-from-right-10 duration-200" onPointerDown={(e) => e.stopPropagation()}>
       <div className="flex justify-between items-center mb-6 border-b border-[#333] pb-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-[#00FF9D]">
             {element.type} Style
@@ -1397,32 +1400,30 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
     };
 
     return (
-        <div className="min-h-screen bg-[#121212] text-white p-10 font-sans">
-            <header className="mb-12 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-[#00FF9D] rounded-lg flex items-center justify-center text-black"><Sparkles size={20} /></div>
-                    <h1 className="text-3xl font-bold font-serif tracking-tight">Stella's Note</h1>
+        <div className="min-h-screen bg-[#121212] text-white p-4 sm:p-6 md:p-10 font-sans">
+            <header className="mb-8 sm:mb-12 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0 justify-between">
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#00FF9D] rounded-lg flex items-center justify-center text-black flex-shrink-0"><Sparkles size={16} /></div>
+                    <h1 className="text-xl sm:text-3xl font-bold font-serif tracking-tight">Stella's Note</h1>
                 </div>
-                <div className="flex items-center gap-3">
-                    {username && <span className="text-sm text-gray-500">{username}</span>}
+                <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
+                    {username && <span className="text-xs sm:text-sm text-gray-500">{username}</span>}
                     {onLogout && (
-                        <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white bg-[#1E1E1E] hover:bg-[#2A2A2A] rounded-xl transition-colors">
-                            <LogOut size={16} /> 退出
+                        <button onClick={onLogout} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 hover:text-white bg-[#1E1E1E] hover:bg-[#2A2A2A] rounded-lg sm:rounded-xl transition-colors">
+                            <LogOut size={14} /> <span className="hidden sm:inline">退出</span>
                         </button>
                     )}
                 </div>
             </header>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
                 {/* Create New Card */}
-                <div 
-                    onClick={() => setIsCreating(true)}
-                    className="aspect-square bg-[#1E1E1E] border border-dashed border-[#333] hover:border-[#00FF9D] hover:bg-[#1E1E1E]/80 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group"
-                >
-                    <div className="w-12 h-12 rounded-full bg-[#2A2A2A] group-hover:bg-[#00FF9D] flex items-center justify-center transition-colors mb-4">
-                        <Plus className="text-gray-400 group-hover:text-black" size={24} />
+                <div onClick={() => setIsCreating(true)}
+                    className="aspect-square max-sm:aspect-[3/2] bg-[#1E1E1E] border border-dashed border-[#333] hover:border-[#00FF9D] hover:bg-[#1E1E1E]/80 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#2A2A2A] group-hover:bg-[#00FF9D] flex items-center justify-center transition-colors mb-2 sm:mb-4">
+                        <Plus className="text-gray-400 group-hover:text-black" size={20} />
                     </div>
-                    <span className="text-gray-400 font-medium group-hover:text-white">New Board</span>
+                    <span className="text-xs sm:text-sm text-gray-400 font-medium group-hover:text-white">新建</span>
                 </div>
 
                 {/* Board Cards */}
@@ -1434,7 +1435,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
                         onDragOver={(e) => handleDragOver(e, index)}
                         onDragEnd={handleDragEnd}
                         onClick={() => onOpenBoard(board.id)}
-                        className="aspect-square bg-[#1E1E1E] border border-[#333] hover:border-gray-500 rounded-2xl p-6 flex flex-col relative group cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-xl"
+                        className="aspect-square max-sm:aspect-[4/3] bg-[#1E1E1E] border border-[#333] hover:border-gray-500 rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col relative group cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-xl"
                     >
                         <div className="flex-1 flex flex-col items-center justify-center">
                             <div className="text-5xl mb-4 select-none">{board.icon}</div>
@@ -1663,7 +1664,7 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
                                         <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
                                             {otp.map((d, i) => (<input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
                                                 onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)} disabled={loading}
-                                                className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />))}
+                                                className={`w-10 h-12 sm:w-11 sm:h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />))}
                                         </div></div>
                                 )}
                                 <div className="relative">
