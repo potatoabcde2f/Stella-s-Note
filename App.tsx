@@ -1638,15 +1638,11 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
             if (error) throw error;
             setMessage('验证码已发送，请查看你的邮箱'); setCodeSent(true); setCountdown(60);
         } catch (err: any) {
-            const msg = typeof err.message === 'string' ? err.message :
-                        typeof err.error_description === 'string' ? err.error_description :
-                        err.msg || err.error || String(err.message || '');
-            if (msg.includes('function "check_email_exists" does not exist') || msg.includes('function check_email_exists')) {
+            const raw = err?.message || err?.error_description || err?.msg || err?.error || '';
+            if (typeof raw === 'string' && (raw.includes('function') && raw.includes('check_email_exists'))) {
                 setError('请先在 Supabase SQL Editor 中运行 RPC 创建脚本');
-            } else if (msg.includes('send') || msg.includes('email') || msg.includes('mail')) {
-                setError('该邮箱地址似乎无效，请检查后重试');
             } else {
-                setError(msg || '发送失败，请重试');
+                setError('发送验证码失败，请检查邮箱地址是否正确');
             }
         }
         finally { setLoading(false); }
