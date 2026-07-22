@@ -893,6 +893,33 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
       setHistoryIndex(0);
   }, [board.id]);
 
+  // Prevent browser wheel-based zoom — only the canvas zooms, not fixed elements
+  useEffect(() => {
+      const el = canvasRef.current;
+      if (!el) return;
+      const handler = (e: WheelEvent) => {
+          if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+              setCurrentBoard(prev => {
+                  const zoomSensitivity = 0.001;
+                  const delta = -e.deltaY * zoomSensitivity;
+                  const newZoom = Math.min(Math.max(prev.viewport.zoom + delta, 0.1), 5);
+                  return { ...prev, viewport: { ...prev.viewport, zoom: newZoom } };
+              });
+          } else {
+              setCurrentBoard(prev => ({
+                  ...prev, viewport: {
+                      ...prev.viewport,
+                      x: prev.viewport.x - e.deltaX,
+                      y: prev.viewport.y - e.deltaY
+                  }
+              }));
+          }
+      };
+      el.addEventListener('wheel', handler, { passive: false });
+      return () => el.removeEventListener('wheel', handler);
+  }, []);
+
   const updateBoard = useCallback((newBoard: Board, addToHistory = true) => {
     setCurrentBoard(newBoard);
     if (addToHistory) {
@@ -1195,6 +1222,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
 
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
         const zoomSensitivity = 0.001;
         const delta = -e.deltaY * zoomSensitivity;
         const newZoom = Math.min(Math.max(currentBoard.viewport.zoom + delta, 0.1), 5);
@@ -1341,8 +1369,8 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
       <div 
         ref={canvasRef}
         className="w-full h-full relative origin-top-left"
-        onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onWheel={handleWheel}
-        onTouchStart={(e) => { if (e.touches.length === 2) { const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); touchDistanceRef.current = d; } }}
+        onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}
+        onTouchStart={(e) => { if (e.touches.length === 2) { e.preventDefault(); const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); touchDistanceRef.current = d; } }}
         onTouchMove={(e) => { if (e.touches.length === 2) { e.preventDefault(); const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); const s = d / (touchDistanceRef.current || 1); const z = Math.min(Math.max(currentBoard.viewport.zoom * s, 0.1), 5); setCurrentBoard({ ...currentBoard, viewport: { ...currentBoard.viewport, zoom: z } }); touchDistanceRef.current = d; } }}
         style={{ touchAction: 'none' }}
       >
@@ -1406,7 +1434,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
         <div className="min-h-screen bg-[#121212] text-white p-4 sm:p-6 md:p-10 font-sans">
             <header className="mb-8 sm:mb-12 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0 justify-between">
                 <div className="flex items-center gap-3 sm:gap-4">
-                    <img src="/logo.png" alt="Stella" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex-shrink-0 object-cover" />
+                    <img src="/抠图logo.png" alt="Stella" className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex-shrink-0 object-cover" />
                     <h1 className="text-xl sm:text-3xl font-bold font-serif tracking-tight">Stella's Note</h1>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
@@ -1644,7 +1672,7 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
             {/* Auth form */}
             <div className="absolute inset-0 z-40 flex items-center justify-center p-4">
                 <div className="w-full max-w-sm text-center">
-                    <img src="/logo.png" alt="Stella's Note" className="w-14 h-14 mx-auto mb-4 rounded-2xl" />
+                    <img src="/抠图logo.png" alt="Stella's Note" className="w-32 h-32 mx-auto mb-4 rounded-2xl" />
                     <h1 className="text-2xl font-bold text-white font-playfair mb-8">Stella's Note</h1>
                     <div className="bg-[#141414]/90 backdrop-blur-md border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00FF9D] via-[#00B8FF] to-[#FF00FF]" />
