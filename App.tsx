@@ -1605,7 +1605,19 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
     useEffect(() => { if (codeSent && otpRefs.current[0]) setTimeout(() => otpRefs.current[0]?.focus(), 200); }, [codeSent]);
     useEffect(() => { if (countdown > 0) { const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); } }, [countdown]);
 
-    const isEmailValid = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+    const isEmailValid = (e: string) => {
+        if (!e || !e.trim()) return false;
+        const parts = e.trim().split('@');
+        if (parts.length !== 2) return false;
+        const [local, domain] = parts;
+        if (!local || local.length < 1) return false;
+        if (!domain || !domain.includes('.')) return false;
+        const tld = domain.split('.').pop() || '';
+        if (tld.length < 2) return false;
+        if (/^(test|fake|invalid|example|user|temp)/i.test(local)) return false;
+        if (/^(example|test|invalid|localhost)\./i.test(domain)) return false;
+        return true;
+    };
     const canSendCode = isEmailValid(email) && !loading && countdown === 0;
     const canRegister = !!username.trim() && isEmailValid(email) && password.length >= 8 && otp.join('').length === 6 && agreeTerms && !loading;
     const canLogin = isEmailValid(email) && !!password && !loading;
