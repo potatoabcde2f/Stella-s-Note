@@ -1604,12 +1604,14 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
     const inputClass = "w-full bg-[#0A0A0A] border border-[#222] rounded-xl px-4 py-3 text-white text-sm focus:border-[#00FF9D] outline-none transition-all placeholder:text-gray-700";
 
     return (
-        <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
-            <div className="w-full max-w-sm text-center">
+        <div className="min-h-screen flex items-center justify-center p-4 relative"
+            style={{ background: "#0A0A0A url('/bg.jpg') center/cover no-repeat" }}>
+            <div className="absolute inset-0 bg-black/60" />
+            <div className="w-full max-w-sm text-center relative z-10">
                 <img src="/logo.png" alt="Stella's Note" className="w-14 h-14 mx-auto mb-4 rounded-2xl" />
                 <h1 className="text-2xl font-bold text-white font-playfair mb-8">Stella's Note</h1>
 
-                <div className="bg-[#141414] border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
+                <div className="bg-[#141414]/90 backdrop-blur-md border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00FF9D] via-[#00B8FF] to-[#FF00FF]" />
 
                     {successMsg && <div className="mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl">{successMsg}</div>}
