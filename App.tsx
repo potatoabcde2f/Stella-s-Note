@@ -1406,7 +1406,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
         <div className="min-h-screen bg-[#121212] text-white p-4 sm:p-6 md:p-10 font-sans">
             <header className="mb-8 sm:mb-12 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0 justify-between">
                 <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#00FF9D] rounded-lg flex items-center justify-center text-black flex-shrink-0"><Sparkles size={16} /></div>
+                    <img src="/logo.png" alt="Stella" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex-shrink-0 object-cover" />
                     <h1 className="text-xl sm:text-3xl font-bold font-serif tracking-tight">Stella's Note</h1>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto">
