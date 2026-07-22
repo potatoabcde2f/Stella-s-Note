@@ -882,6 +882,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
   const canvasRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const touchDistanceRef = useRef<number>(0);
 
   const selectedElement = currentBoard.elements.find(el => el.id === selectedId);
 
@@ -1341,6 +1342,8 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
         ref={canvasRef}
         className="w-full h-full relative origin-top-left"
         onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onWheel={handleWheel}
+        onTouchStart={(e) => { if (e.touches.length === 2) { const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); touchDistanceRef.current = d; } }}
+        onTouchMove={(e) => { if (e.touches.length === 2) { e.preventDefault(); const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); const s = d / (touchDistanceRef.current || 1); const z = Math.min(Math.max(currentBoard.viewport.zoom * s, 0.1), 5); setCurrentBoard({ ...currentBoard, viewport: { ...currentBoard.viewport, zoom: z } }); touchDistanceRef.current = d; } }}
         style={{ touchAction: 'none' }}
       >
          <div className="absolute origin-top-left w-[10000px] h-[10000px]" style={{ transform: `translate(${currentBoard.viewport.x}px, ${currentBoard.viewport.y}px) scale(${currentBoard.viewport.zoom})` }}>
@@ -1419,7 +1422,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
                 {/* Create New Card */}
                 <div onClick={() => setIsCreating(true)}
-                    className="aspect-square max-sm:aspect-[3/2] bg-[#1E1E1E] border border-dashed border-[#333] hover:border-[#00FF9D] hover:bg-[#1E1E1E]/80 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group">
+                    className="aspect-square bg-[#1E1E1E] border border-dashed border-[#333] hover:border-[#00FF9D] hover:bg-[#1E1E1E]/80 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all group">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#2A2A2A] group-hover:bg-[#00FF9D] flex items-center justify-center transition-colors mb-2 sm:mb-4">
                         <Plus className="text-gray-400 group-hover:text-black" size={20} />
                     </div>
@@ -1435,7 +1438,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
                         onDragOver={(e) => handleDragOver(e, index)}
                         onDragEnd={handleDragEnd}
                         onClick={() => onOpenBoard(board.id)}
-                        className="aspect-square max-sm:aspect-[4/3] bg-[#1E1E1E] border border-[#333] hover:border-gray-500 rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col relative group cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-xl"
+                        className="aspect-square bg-[#1E1E1E] border border-[#333] hover:border-gray-500 rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col relative group cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-xl"
                     >
                         <div className="flex-1 flex flex-col items-center justify-center">
                             <div className="text-5xl mb-4 select-none">{board.icon}</div>
