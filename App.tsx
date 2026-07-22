@@ -1432,7 +1432,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
 
     return (
         <div className="min-h-screen bg-[#121212] text-white p-4 sm:p-6 md:p-10 font-sans">
-            <header className="mb-8 sm:mb-12 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0 justify-between">
+            <header className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0 justify-between">
                 <div className="flex items-center gap-3 sm:gap-4">
                     <img src="/抠图logo.png" alt="Stella" className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex-shrink-0 object-cover" />
                     <h1 className="text-xl sm:text-3xl font-bold font-serif tracking-tight">Stella's Note</h1>
