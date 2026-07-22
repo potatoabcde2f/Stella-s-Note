@@ -1523,27 +1523,20 @@ const AuthScreen = () => {
     const canRegister = !!username.trim() && isEmailValid(email) && password.length >= 8 && otp.join('').length === 6 && agreeTerms && !loading;
     const canLogin = isEmailValid(email) && !!password && !loading;
 
-    // Send verification code with registered email check
+    // Send verification code
     const handleSendCode = async () => {
-        if (!isEmailValid(email)) { setError('Please enter a valid email'); return; }
+        if (!isEmailValid(email)) { setError('请输入有效的邮箱地址'); return; }
         setError(''); setMessage(''); setLoading(true);
         try {
-            // Step 1: Check if email already exists — signInWithOtp without shouldCreateUser only works for existing users
-            const { error: checkError } = await supabase.auth.signInWithOtp({ email: email.trim() });
-            if (!checkError) {
-                // Email exists — code was sent to existing user, show toast
-                throw new Error('该邮箱已注册，请换个邮箱注册');
-            }
-            // Email doesn't exist — now send code with user creation
             const { error } = await supabase.auth.signInWithOtp({
                 email: email.trim(),
                 options: { shouldCreateUser: true }
             });
             if (error) throw error;
-            setMessage('Verification code sent! Please check your email.');
+            setMessage('验证码已发送，请查看你的邮箱');
             setCodeSent(true);
             setCountdown(60);
-        } catch (err: any) { setError(err.message || 'Failed to send code'); }
+        } catch (err: any) { setError(err.message || '发送失败，请重试'); }
         finally { setLoading(false); }
     };
 
@@ -1573,10 +1566,10 @@ const AuthScreen = () => {
         setLoading(true); setError('');
         try {
             const { error: verifyErr } = await supabase.auth.verifyOtp({ email: email.trim(), token: otp.join(''), type: 'email' });
-            if (verifyErr) throw new Error('Invalid or expired verification code');
+            if (verifyErr) throw new Error('验证码无效或已过期');
             await supabase.auth.updateUser({ password, data: { username } });
             await supabase.auth.signOut();
-            setSuccessMsg('Account created! Please sign in.');
+            setSuccessMsg('注册成功！请登录');
             setMode('login'); setCodeSent(false);
             setOtp(Array(6).fill('')); setPassword(''); setUsername(''); setAgreeTerms(false);
         } catch (err: any) { setError(err.message || 'Registration failed'); }
@@ -1590,10 +1583,10 @@ const AuthScreen = () => {
         try {
             const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
             if (error) {
-                if (error.message.includes('Invalid login credentials')) throw new Error('Email or password incorrect');
+                if (error.message.includes('Invalid login credentials')) throw new Error('邮箱或密码错误');
                 throw error;
             }
-        } catch (err: any) { setError(err.message || 'Login failed'); }
+        } catch (err: any) { setError(err.message || '登录失败'); }
         finally { setLoading(false); }
     };
 
@@ -1618,34 +1611,37 @@ const AuthScreen = () => {
 
                     {mode === 'register' && (
                         <div className="space-y-3.5 text-left">
-                            <h2 className="text-lg font-bold text-white text-center">Create Account</h2>
+                            <h2 className="text-lg font-bold text-white text-center">创建账号</h2>
 
-                            <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)}
+                            <input type="text" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)}
                                 className={inputClass} />
 
                             <div className="flex gap-2">
-                                <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+                                <input type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)}
                                     className={`flex-1 ${inputClass}`} />
                                 <button onClick={handleSendCode} disabled={!canSendCode}
                                     className={`px-3 py-3 font-bold rounded-xl transition-all text-xs whitespace-nowrap ${countdown > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-[#00FF9D]/10 text-[#00FF9D] border border-[#00FF9D]/20 hover:bg-[#00FF9D]/20'} disabled:opacity-40 disabled:cursor-not-allowed`}>
-                                    {loading ? <Loader2 className="animate-spin" size={16} /> : countdown > 0 ? `${countdown}s` : 'Send Code'}
+                                    {loading ? <Loader2 className="animate-spin" size={16} /> : countdown > 0 ? `${countdown}s` : '发送验证码'}
                                 </button>
                             </div>
 
                             {message && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-3 rounded-xl">{message}</div>}
 
                             {codeSent && (
-                                <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
-                                    {otp.map((d, i) => (
-                                        <input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
-                                            onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                            disabled={loading} className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
-                                    ))}
+                                <div>
+                                    <p className="text-gray-500 text-xs mb-2">请输入6位验证码</p>
+                                    <div className="flex justify-center gap-2.5" onPaste={handleOtpPaste}>
+                                        {otp.map((d, i) => (
+                                            <input key={i} ref={(el) => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
+                                                onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                                                disabled={loading} className={`w-11 h-13 bg-[#0A0A0A] border-2 rounded-xl text-center text-white text-lg font-bold outline-none transition-all ${d ? 'border-[#00FF9D] shadow-[0_0_12px_rgba(0,255,157,0.15)]' : 'border-[#222] focus:border-gray-500'} ${loading ? 'opacity-50' : ''}`} />
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 
                             <div className="relative">
-                                <input type={showPassword ? 'text' : 'password'} placeholder="Password (min. 8 characters)" value={password}
+                                <input type={showPassword ? 'text' : 'password'} placeholder="密码（至少8个字符）" value={password}
                                     onChange={(e) => setPassword(e.target.value)} className={inputClass + ' pr-10'} />
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
                                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -1654,28 +1650,28 @@ const AuthScreen = () => {
 
                             <label className="flex items-start gap-2 cursor-pointer">
                                 <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} className="mt-0.5 accent-[#00FF9D]" />
-                                <span className="text-gray-500 text-xs text-left">I agree to the Terms of Service and Privacy Policy</span>
+                                <span className="text-gray-500 text-xs text-left">我已阅读并同意服务条款和隐私政策</span>
                             </label>
 
                             {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
                             <button onClick={handleRegister} disabled={!canRegister}
                                 className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
-                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Register'}
+                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : '注册'}
                             </button>
                             <div className="text-center pt-1">
-                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">Already have an account? Sign In</button>
+                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">已有账号？去登录</button>
                             </div>
                         </div>
                     )}
 
                     {mode === 'login' && (
                         <div className="space-y-4 text-left">
-                            <h2 className="text-lg font-bold text-white text-center">Sign In</h2>
-                            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
+                            <h2 className="text-lg font-bold text-white text-center">登录</h2>
+                            <input type="email" placeholder="邮箱" value={email} onChange={(e) => setEmail(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()}
                                 className={inputClass} />
                             <div className="relative">
-                                <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
+                                <input type={showPassword ? 'text' : 'password'} placeholder="密码" value={password}
                                     onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && canLogin && handleLogin()}
                                     className={inputClass + ' pr-10'} />
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
@@ -1685,10 +1681,10 @@ const AuthScreen = () => {
                             {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl">{error}</div>}
                             <button onClick={handleLogin} disabled={!canLogin}
                                 className="w-full bg-[#00FF9D] hover:bg-[#00FF9D]/90 disabled:bg-[#00FF9D]/20 disabled:text-[#00FF9D]/50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-all text-sm">
-                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Sign In'}
+                                {loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : '登录'}
                             </button>
                             <div className="text-center pt-1">
-                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">No account yet? Register →</button>
+                                <button onClick={switchMode} className="text-gray-500 hover:text-white text-xs transition-colors">还没有账号？去注册 →</button>
                             </div>
                         </div>
                     )}
