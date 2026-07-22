@@ -1614,10 +1614,24 @@ const AuthScreen = ({ registerLockRef }: { registerLockRef?: React.MutableRefObj
         if (!isEmailValid(email)) { setError('请输入有效的邮箱地址'); return; }
         setError(''); setMessage(''); setLoading(true);
         try {
+            // 先通过数据库函数检查邮箱是否已被注册（不会发任何邮件）
+            const { data: exists, error: rpcError } = await supabase.rpc('check_email_exists', { email_to_check: email.trim() });
+            if (exists) {
+                setMessage('该邮箱已注册，已自动切换至登录页面');
+                setTimeout(() => { setMode('login'); setPassword(''); setMessage(''); }, 1500);
+                return;
+            }
+            // 没注册过 → 正常发验证码
             const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
             if (error) throw error;
             setMessage('验证码已发送，请查看你的邮箱'); setCodeSent(true); setCountdown(60);
-        } catch (err: any) { setError(err.message || '发送失败，请重试'); }
+        } catch (err: any) {
+            if (err.message?.includes('function "check_email_exists" does not exist') || err.message?.includes('function check_email_exists')) {
+                setError('请先在 Supabase SQL Editor 中运行 RPC 创建脚本');
+            } else {
+                setError(err.message || '发送失败，请重试');
+            }
+        }
         finally { setLoading(false); }
     };
     const handleOtpChange = (i: number, v: string) => {
