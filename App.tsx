@@ -1608,7 +1608,7 @@ const AuthScreen = () => {
     return (
         <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
             <div className="w-full max-w-sm text-center">
-                <div className="inline-flex items-center justify-center w-14 h-14 bg-[#141414] border border-[#222] rounded-2xl mb-4 text-[#00FF9D] shadow-lg"><Sparkles size={28} /></div>
+                <img src="/logo.png" alt="Stella's Note" className="w-14 h-14 mx-auto mb-4 rounded-2xl" />
                 <h1 className="text-2xl font-bold text-white font-playfair mb-8">Stella's Note</h1>
 
                 <div className="bg-[#141414] border border-[#222] rounded-2xl p-7 shadow-2xl relative overflow-hidden">
