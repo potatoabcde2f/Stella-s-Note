@@ -249,7 +249,7 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
         </div>
 
         {/* Text Options - EXCLUDED for Todo */}
-        {(element.type === 'text' || element.type === 'note') && (
+        {element.type === 'note' && (
             <>
                 <div>
                     <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">字体</label>
@@ -922,6 +922,45 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
 
   const selectedElement = currentBoard.elements.find(el => el.id === selectedId);
 
+  const clipboardRef = useRef<CanvasElement | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+      const el = selectedElement;
+      if (!el) return;
+      const tag = (document.activeElement?.tagName || '');
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+          updateBoard({ ...currentBoard, elements: currentBoard.elements.filter(ce => ce.id !== el.id) });
+          setSelectedId(null);
+          return;
+      }
+      if (e.key === 'ArrowUp' && e.shiftKey) {
+          e.preventDefault();
+          const newZ = (el.style?.zIndex || 1) + 1;
+          updateBoard({ ...currentBoard, elements: currentBoard.elements.map(ce => ce.id === el.id ? { ...ce, style: { ...ce.style, zIndex: newZ } } : ce) });
+          return;
+      }
+      if (e.key === 'ArrowDown' && e.shiftKey) {
+          e.preventDefault();
+          const newZ = Math.max((el.style?.zIndex || 1) - 1, 0);
+          updateBoard({ ...currentBoard, elements: currentBoard.elements.map(ce => ce.id === el.id ? { ...ce, style: { ...ce.style, zIndex: newZ } } : ce) });
+          return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+          e.preventDefault();
+          clipboardRef.current = { ...el, id: 'clipboard' };
+          return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+          e.preventDefault();
+          if (!clipboardRef.current) return;
+          const newEl: CanvasElement = { ...clipboardRef.current, id: generateId(), x: el.x + 30, y: el.y + 30 };
+          updateBoard({ ...currentBoard, elements: [...currentBoard.elements, newEl] });
+          setSelectedId(newEl.id);
+          return;
+      }
+  };
+
   // Sync prop changes
   useEffect(() => {
       setCurrentBoard(board);
@@ -1396,7 +1435,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
   return (
     <div 
         className="w-screen h-screen bg-[#121212] overflow-hidden relative select-none"
-        onPaste={handlePaste} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} tabIndex={0}
+        onPaste={handlePaste} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onKeyDown={handleKeyDown} tabIndex={0}
         style={{
             backgroundImage: 'radial-gradient(#333 1px, transparent 1px)',
             backgroundSize: `${20 * currentBoard.viewport.zoom}px ${20 * currentBoard.viewport.zoom}px`,
@@ -1427,7 +1466,24 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
       <PropertyPanel element={selectedElement} onChange={(patch: any) => updateBoard({ ...currentBoard, elements: currentBoard.elements.map(e => e.id === selectedId ? { ...e, ...patch, style: { ...e.style, ...patch.style } } : e) })} onDelete={() => { updateBoard({ ...currentBoard, elements: currentBoard.elements.filter(e => e.id !== selectedId) }); setSelectedId(null); }} onAI={async () => { if (selectedElement && selectedElement.type === 'text') { const newText = await generateTextEnhancement("改进文本清晰度和语法", selectedElement.content); updateBoard({ ...currentBoard, elements: currentBoard.elements.map(e => e.id === selectedId ? { ...e, content: newText } : e) }); } }} />
       {showTableGrid && <GridSelector onClose={() => setShowTableGrid(false)} onSelect={(rows, cols) => { const centerPos = { x: (window.innerWidth / 2 - currentBoard.viewport.x) / currentBoard.viewport.zoom - (cols * 50), y: (window.innerHeight / 2 - currentBoard.viewport.y) / currentBoard.viewport.zoom - (rows * 20) }; const newEl: CanvasElement = { id: generateId(), type: 'table', x: centerPos.x, y: centerPos.y, width: cols * 100, height: rows * 40, content: { rows, cols, data: {} }, style: { backgroundColor: '#1a1a1a', zIndex: currentBoard.elements.length + 1 } }; updateBoard({ ...currentBoard, elements: [...currentBoard.elements, newEl] }); setShowTableGrid(false); setSelectedId(newEl.id); setActiveTool('select'); }} />}
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
-      <div className="fixed bottom-4 right-4 bg-black/50 px-3 py-1 rounded-full text-xs text-gray-500 font-mono pointer-events-none">{Math.round(currentBoard.viewport.zoom * 100)}%</div>
+      <div className="fixed bottom-4 right-4 flex items-center gap-2">
+          <div className="bg-black/50 px-3 py-1 rounded-full text-xs text-gray-500 font-mono pointer-events-none">{Math.round(currentBoard.viewport.zoom * 100)}%</div>
+          <div className="relative">
+              <button onClick={() => setShowShortcuts(!showShortcuts)} className="bg-black/50 hover:bg-black/70 px-2 py-1 rounded-full text-xs text-gray-400 transition-colors">快捷键</button>
+              {showShortcuts && (
+                  <div className="absolute bottom-8 right-0 bg-[#1a1a1a] border border-[#333] rounded-xl p-4 shadow-2xl w-64 text-xs text-gray-300 z-50" onClick={() => setShowShortcuts(false)}>
+                      <div className="font-bold text-[#00FF9D] mb-3 text-sm">快捷键</div>
+                      <div className="space-y-2">
+                          <div><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Shift</span> + <span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">↑</span> 上移一层</div>
+                          <div><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Shift</span> + <span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">↓</span> 下移一层</div>
+                          <div><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Ctrl</span> + <span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">C</span> 复制组件</div>
+                          <div><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Ctrl</span> + <span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">V</span> 粘贴组件</div>
+                          <div><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Delete</span> 删除组件</div>
+                      </div>
+                  </div>
+              )}
+          </div>
+      </div>
     </div>
   );
 }
