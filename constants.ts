@@ -26,15 +26,15 @@ export const PALETTE = [
 ];
 
 export const TOOLS = [
-  { id: 'select', icon: MousePointer2, label: 'Select (V)' },
-  { id: 'text', type: 'text', icon: Type, label: 'Text (T)' },
-  { id: 'note', type: 'note', icon: Box, label: 'Note' },
-  { id: 'todo', type: 'todo', icon: CheckSquare, label: 'Todo (C)' },
-  { id: 'container', type: 'container', icon: Layout, label: 'Board' },
-  { id: 'table', type: 'table', icon: Table, label: 'Table' },
-  { id: 'link', type: 'link', icon: Link, label: 'Link' },
-  { id: 'image', type: 'image', icon: ImageIcon, label: 'Image' },
-  { id: 'file', type: 'file', icon: FileText, label: 'File' },
+  { id: 'select', icon: MousePointer2, label: '选择 (V)' },
+  { id: 'text', type: 'text', icon: Type, label: '文字 (T)' },
+  { id: 'note', type: 'note', icon: Box, label: '笔记' },
+  { id: 'todo', type: 'todo', icon: CheckSquare, label: '待办 (C)' },
+  { id: 'container', type: 'container', icon: Layout, label: '容器' },
+  { id: 'table', type: 'table', icon: Table, label: '表格' },
+  { id: 'link', type: 'link', icon: Link, label: '链接' },
+  { id: 'image', type: 'image', icon: ImageIcon, label: '图片' },
+  { id: 'file', type: 'file', icon: FileText, label: '文件' },
 ];
 
 export const INITIAL_BOARD_ID = 'default-board';

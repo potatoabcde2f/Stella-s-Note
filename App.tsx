@@ -22,9 +22,9 @@ const screenToWorld = (point: Point, transform: ViewTransform): Point => ({
 });
 
 const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return '0 字节';
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ['字节', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
@@ -42,7 +42,7 @@ const formatBytes = (bytes: number) => {
 
 // Markdown Renderer
 const MarkdownRenderer = ({ text, style }: { text: string, style?: any }) => {
-    if (!text) return <span className="text-gray-500 italic select-none pointer-events-none">Double click to edit...</span>;
+    if (!text) return <span className="text-gray-500 italic select-none pointer-events-none">双击编辑...</span>;
     
     // Process text line by line
     const lines = text.split('\n');
@@ -132,6 +132,13 @@ const getFontFamily = (type?: string) => {
         case 'serif': return "'Playfair Display', serif";
         case 'mono': return "'JetBrains Mono', monospace";
         case 'hand': return "'Caveat', cursive";
+        case 'noto-sans': return "'Noto Sans SC', 'Microsoft YaHei', sans-serif";
+        case 'noto-serif': return "'Noto Serif SC', 'SimSun', serif";
+        case 'ma-shan': return "'Ma Shan Zheng', cursive";
+        case 'zhi-mang': return "'Zhi Mang Xing', cursive";
+        case 'zcool': return "'ZCOOL QingKe HuangYou', sans-serif";
+        case 'kuai-le': return "'ZCOOL KuaiLe', cursive";
+        case 'long-cang': return "'Long Cang', cursive";
         default: return "'Inter', sans-serif";
     }
 };
@@ -161,7 +168,7 @@ const Toolbar = ({ activeTool, onSelectTool, onUndo, onRedo, onHome }: any) => (
   <>
     {/* Desktop: vertical left sidebar */}
     <div className="hidden sm:flex fixed left-4 top-1/2 -translate-y-1/2 bg-[#1a1a1a] border border-[#333] rounded-2xl p-2 flex-col gap-3 shadow-2xl z-50">
-      <button onClick={onHome} className="p-2 text-[#00FF9D] hover:bg-[#00FF9D]/10 rounded-xl" title="Back to Home"><Home size={20} /></button>
+      <button onClick={onHome} className="p-2 text-[#00FF9D] hover:bg-[#00FF9D]/10 rounded-xl" title="返回首页"><Home size={20} /></button>
       <div className="h-px bg-[#333] my-1" />
       {TOOLS.map((tool) => (
         <button key={tool.id} onClick={() => onSelectTool(tool.type || 'select')}
@@ -211,9 +218,9 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
     <div className="fixed right-4 top-20 w-72 max-sm:right-2 max-sm:top-auto max-sm:bottom-20 max-sm:w-[calc(100%-16px)] max-sm:max-h-[50vh] max-sm:overflow-y-auto bg-[#1a1a1a] border border-[#333] rounded-2xl p-5 shadow-2xl z-50 animate-in slide-in-from-right-10 duration-200" onPointerDown={(e) => e.stopPropagation()}>
       <div className="flex justify-between items-center mb-6 border-b border-[#333] pb-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-[#00FF9D]">
-            {element.type} Style
+            {element.type === 'text' ? '文字样式' : element.type === 'note' ? '笔记样式' : element.type === 'image' ? '图片样式' : element.type === 'file' ? '文件样式' : element.type === 'todo' ? '待办样式' : element.type === 'link' ? '链接样式' : element.type === 'container' ? '容器样式' : '表格样式'}
         </h3>
-        <button onClick={onDelete} className="text-gray-500 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-lg transition-colors" title="Delete">
+        <button onClick={onDelete} className="text-gray-500 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-lg transition-colors" title="删除">
           <Trash2 size={16} />
         </button>
       </div>
@@ -222,7 +229,7 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
         
         {/* Colors */}
         <div>
-            <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">Background</label>
+            <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">背景</label>
             <div className="flex gap-2 flex-wrap">
                 {PALETTE.map(c => (
                     <button 
@@ -240,12 +247,19 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
         {(element.type === 'text' || element.type === 'note') && (
             <>
                 <div>
-                    <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">Typography</label>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'sans' } })} className={`px-2 py-1 text-xs rounded border ${(!element.style?.fontFamily || element.style?.fontFamily === 'sans') ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>Sans</button>
-                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'serif' } })} className={`font-serif px-2 py-1 text-xs rounded border ${element.style?.fontFamily === 'serif' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>Serif</button>
-                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'mono' } })} className={`font-mono px-2 py-1 text-xs rounded border ${element.style?.fontFamily === 'mono' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>Mono</button>
-                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'hand' } })} className={`font-hand px-2 py-1 text-xs rounded border ${element.style?.fontFamily === 'hand' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>Hand</button>
+                    <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">字体</label>
+                    <div className="grid grid-cols-3 gap-1.5 max-h-36 overflow-y-auto">
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'sans' } })} className={`px-2 py-1.5 text-xs rounded border ${(!element.style?.fontFamily || element.style?.fontFamily === 'sans') ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>默认</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'serif' } })} className={`font-playfair px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'serif' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>衬线</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'mono' } })} className={`font-mono px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'mono' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>等宽</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'hand' } })} className={`font-hand px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'hand' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>手写</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'noto-sans' } })} className={`font-noto-sans px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'noto-sans' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>思源黑</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'noto-serif' } })} className={`font-noto-serif px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'noto-serif' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>思源宋</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'ma-shan' } })} className={`font-ma-shan px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'ma-shan' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>书法</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'zhi-mang' } })} className={`font-zhi-mang px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'zhi-mang' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>行书</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'zcool' } })} className={`font-zcool px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'zcool' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>黄油</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'kuai-le' } })} className={`font-kuai-le px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'kuai-le' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>快乐</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'long-cang' } })} className={`font-long-cang px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'long-cang' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>龙仓</button>
                     </div>
                     {element.type !== 'note' && (
                         <div className="flex bg-[#222] rounded-lg p-1 border border border-[#333]">
@@ -274,7 +288,7 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
                     className="w-full flex items-center justify-center gap-2 bg-[#222] hover:bg-[#333] text-gray-300 hover:text-white text-xs font-bold py-2 rounded-xl transition-all border border-[#333]"
                 >
                     <RefreshCw size={14} />
-                    Reset Original Size
+                    重置原始大小
                 </button>
             </div>
         )}
@@ -282,7 +296,7 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
         {/* Border Radius for supported types */}
         {(element.type === 'image' || element.type === 'container' || element.type === 'text' || element.type === 'note') && (
              <div>
-                <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">Corner Radius: {element.style?.borderRadius || 0}px</label>
+                <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">圆角: {element.style?.borderRadius || 0}px</label>
                 <input 
                     type="range" min="0" max="40" step="4"
                     value={element.style?.borderRadius || 0}
@@ -295,16 +309,16 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
 
         {/* Layering */}
         <div>
-            <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">Layering</label>
+            <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">层级</label>
             <div className="flex gap-2">
                  <button 
                     onClick={() => onChange({ style: { ...element.style, zIndex: (element.style?.zIndex || 1) + 1 } })}
                     className="flex-1 bg-[#222] text-xs py-2 px-2 rounded-lg border border-[#333] hover:bg-[#2A2A2A] hover:text-white text-gray-400"
-                 >Bring Forward</button>
-                 <button 
+                 >上移一层</button>
+                 <button
                     onClick={() => onChange({ style: { ...element.style, zIndex: Math.max((element.style?.zIndex || 1) - 1, 0) } })}
                     className="flex-1 bg-[#222] text-xs py-2 px-2 rounded-lg border border-[#333] hover:bg-[#2A2A2A] hover:text-white text-gray-400"
-                 >Send Backward</button>
+                 >下移一层</button>
             </div>
         </div>
 
@@ -315,7 +329,7 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
                     className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black text-xs font-bold py-3 rounded-xl transition-all shadow-lg"
                 >
                     <Sparkles size={16} />
-                    AI Enhance
+                    AI 优化
                 </button>
             </div>
         )}
@@ -329,7 +343,7 @@ const GridSelector = ({ onSelect, onClose }: { onSelect: (rows: number, cols: nu
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
             <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                <h3 className="text-white text-sm font-bold mb-4 text-center">Create Table</h3>
+                <h3 className="text-white text-sm font-bold mb-4 text-center">创建表格</h3>
                 <div 
                     className="grid gap-1 mb-4" 
                     style={{ gridTemplateColumns: 'repeat(8, 24px)' }}
@@ -349,7 +363,7 @@ const GridSelector = ({ onSelect, onClose }: { onSelect: (rows: number, cols: nu
                     ))}
                 </div>
                 <div className="text-center text-sm font-mono text-[#00FF9D]">
-                    {hover.r + 1} rows x {hover.c + 1} cols
+                    {hover.r + 1} 行 x {hover.c + 1} 列
                 </div>
             </div>
         </div>
@@ -448,7 +462,7 @@ const NoteElement = ({ element, onChange }: any) => {
             />
         ) : (
             <div className="w-full relative z-10 pointer-events-none text-lg leading-relaxed whitespace-pre-wrap" style={{ fontFamily: getFontFamily(element.style?.fontFamily || 'serif') }}>
-                {String(element.content || '') || <span className="opacity-50">Empty Note</span>}
+                {String(element.content || '') || <span className="opacity-50">空笔记</span>}
             </div>
         )}
     </div>
@@ -458,7 +472,7 @@ const NoteElement = ({ element, onChange }: any) => {
 const TodoElement = ({ element, onChange }: any) => {
     const content = typeof element.content === 'object' && !Array.isArray(element.content) 
         ? element.content 
-        : { title: 'To Do', items: Array.isArray(element.content) ? element.content : [] };
+        : { title: '待办', items: Array.isArray(element.content) ? element.content : [] };
     
     const items = content.items;
     const updateContent = (newContent: any) => onChange({ content: newContent });
@@ -525,7 +539,7 @@ const TodoElement = ({ element, onChange }: any) => {
                 className="text-[#00FF9D] bg-transparent text-sm font-bold uppercase mb-4 tracking-wider w-full outline-none placeholder-[#00FF9D]/50"
                 value={content.title}
                 onChange={(e) => updateContent({...content, title: e.target.value})}
-                placeholder="TODO LIST"
+                placeholder="待办列表"
                 onPointerDown={(e) => e.stopPropagation()}
             />
             
@@ -556,7 +570,7 @@ const TodoElement = ({ element, onChange }: any) => {
                                 value={item.text}
                                 onChange={(e) => updateItem(item.id, { text: e.target.value })}
                                 onKeyDown={(e) => handleKeyDown(e, index, item.id)}
-                                placeholder="Task..."
+                                placeholder="任务..."
                             />
                             <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <div className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-[#00FF9D] cursor-pointer relative">
@@ -566,7 +580,7 @@ const TodoElement = ({ element, onChange }: any) => {
                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                         onChange={(e) => updateItem(item.id, { dueDate: e.target.value })}
                                     />
-                                    <span>{item.dueDate ? new Date(item.dueDate).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'Date'}</span>
+                                    <span>{item.dueDate ? new Date(item.dueDate).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : '日期'}</span>
                                 </div>
                             </div>
                         </div>
@@ -583,7 +597,7 @@ const TodoElement = ({ element, onChange }: any) => {
                 onClick={(e) => { e.stopPropagation(); addItem(); }}
                 className="mt-2 flex items-center justify-center gap-2 w-full py-2 rounded border border-dashed border-[#333] text-gray-500 text-xs hover:text-[#00FF9D] hover:border-[#00FF9D] transition-colors"
             >
-                <Plus size={12} /> Add Item
+                <Plus size={12} /> 添加项目
             </button>
         </div>
     )
@@ -609,7 +623,7 @@ const LinkElement = ({ element, onChange }: any) => {
                 <Globe className="text-gray-500 mb-2" />
                 <input 
                     className="w-full bg-[#333] text-white px-2 py-1 rounded text-sm outline-none border border-transparent focus:border-[#00FF9D]"
-                    placeholder="Paste URL..."
+                    placeholder="粘贴链接..."
                     value={content.url}
                     onChange={(e) => updateLink({ url: e.target.value })}
                     onPointerDown={(e) => e.stopPropagation()}
@@ -626,7 +640,7 @@ const LinkElement = ({ element, onChange }: any) => {
                 e.stopPropagation();
                 window.open(content.url, '_blank'); 
             }}
-            title="Double click to open link"
+            title="双击打开链接"
         >
             <div className="h-2/3 bg-gradient-to-br from-[#2A2A2A] to-[#111] flex items-center justify-center relative">
                 <Globe size={48} className="text-[#00FF9D] opacity-20 group-hover:scale-110 transition-transform duration-500" />
@@ -639,7 +653,7 @@ const LinkElement = ({ element, onChange }: any) => {
                         onChange={(e) => updateLink({ title: e.target.value })}
                         onClick={e => e.stopPropagation()} 
                         onPointerDown={(e) => e.stopPropagation()}
-                        placeholder="Link Title"
+                        placeholder="链接标题"
                      />
                      <ExternalLink size={14} className="text-[#00FF9D]" />
                 </div>
@@ -685,8 +699,8 @@ const ImageElement = ({ element, onChange, onOpenLightbox }: any) => {
                     <label className="flex flex-col items-center justify-center h-full text-gray-500 cursor-pointer hover:text-[#00FF9D] transition-colors p-4 text-center">
                         <input type="file" accept="image/*" className="hidden" onChange={handleUpload} onPointerDown={e => e.stopPropagation()} />
                         <Upload size={32} />
-                        <span className="text-xs mt-2 font-bold">Click to Upload Image</span>
-                        <span className="text-[10px] opacity-50 mt-1">or drag & drop</span>
+                        <span className="text-xs mt-2 font-bold">点击上传图片</span>
+                        <span className="text-[10px] opacity-50 mt-1">或拖拽上传</span>
                     </label>
                 )}
             </div>
@@ -697,7 +711,7 @@ const ImageElement = ({ element, onChange, onOpenLightbox }: any) => {
                         value={content.caption || ''}
                         onChange={(e) => onChange({ content: { ...content, caption: e.target.value } })}
                         onPointerDown={(e) => e.stopPropagation()}
-                        placeholder="Add caption..."
+                        placeholder="添加说明..."
                     />
                 </div>
             )}
@@ -731,7 +745,7 @@ const FileElement = ({ element, onChange }: any) => {
                  <label className="flex flex-col items-center justify-center cursor-pointer text-gray-500 hover:text-[#00FF9D] transition-colors">
                     <input type="file" className="hidden" onChange={handleUpload} onPointerDown={e => e.stopPropagation()} />
                     <Upload size={24} />
-                    <span className="text-xs mt-2 font-bold">Upload File</span>
+                    <span className="text-xs mt-2 font-bold">上传文件</span>
                 </label>
             </div>
         );
@@ -747,11 +761,11 @@ const FileElement = ({ element, onChange }: any) => {
              </div>
              {/* Forced visibility with text-gray-200 and explicit z-index */}
              <div className="text-sm font-bold w-full text-center px-2 overflow-hidden text-ellipsis whitespace-nowrap text-gray-200 z-10">
-                {element.content?.name || 'Unknown File'}
+                {element.content?.name || '未知文件'}
              </div>
              <div className="text-xs text-gray-500 mt-1 uppercase tracking-wide">{element.content?.size || '0 KB'}</div>
              <a href={element.content?.url} download className="mt-4 bg-[#333] hover:bg-[#00FF9D] hover:text-black px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all">
-                 <Download size={12} /> Download
+                 <Download size={12} /> 下载
              </a>
         </div>
     )
@@ -795,7 +809,7 @@ const TableElement = ({ element, onChange, isSelected }: any) => {
                                     onChange={(e) => updateCell(r, c, e.target.value)}
                                     onPointerDown={(e) => isEditing && e.stopPropagation()}
                                     readOnly={!isEditing}
-                                    placeholder={isHeader ? `Col ${c+1}` : ''}
+                                    placeholder={isHeader ? `列 ${c+1}` : ''}
                                 />
                             </div>
                         )
@@ -809,7 +823,7 @@ const TableElement = ({ element, onChange, isSelected }: any) => {
                         e.stopPropagation();
                         setIsEditing(true);
                     }}
-                    title="Double click to edit cells"
+                    title="双击编辑单元格"
                 />
             )}
         </div>
@@ -831,9 +845,9 @@ const ContainerElement = ({ element, children, onChange, cardCount }: any) => {
                     value={String(element.content || '')}
                     onChange={(e) => onChange({ content: e.target.value })}
                     onPointerDown={(e) => e.stopPropagation()}
-                    placeholder="New Column"
+                    placeholder="新列"
                 />
-                <div className="text-[10px] text-gray-500 uppercase tracking-widest text-center mt-0.5">{cardCount} cards</div>
+                <div className="text-[10px] text-gray-500 uppercase tracking-widest text-center mt-0.5">{cardCount} 张卡片</div>
             </div>
             <div className="flex-1 relative rounded-b-[inherit] min-h-[50px]" />
         </div>
@@ -1106,6 +1120,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
         if (activeTool === 'note') { newEl.width = 200; newEl.height = 200; newEl.style!.borderRadius = 0; }
         if (activeTool === 'text') { newEl.height = 100; newEl.width = 300; }
         if (activeTool === 'link') { newEl.height = 200; newEl.width = 200; }
+        if (activeTool === 'todo') { newEl.height = 300; }
         updateBoard({ ...currentBoard, elements: [...currentBoard.elements, newEl] });
         setSelectedId(newEl.id);
         setActiveTool('select');
@@ -1387,7 +1402,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
       <Toolbar activeTool={activeTool} onSelectTool={handleToolSelect} onUndo={handleUndo} onRedo={handleRedo} onHome={onBack} />
       <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleDirectUpload(e, 'image')} />
       <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => handleDirectUpload(e, 'file')} />
-      <PropertyPanel element={selectedElement} onChange={(patch: any) => updateBoard({ ...currentBoard, elements: currentBoard.elements.map(e => e.id === selectedId ? { ...e, ...patch, style: { ...e.style, ...patch.style } } : e) })} onDelete={() => { updateBoard({ ...currentBoard, elements: currentBoard.elements.filter(e => e.id !== selectedId) }); setSelectedId(null); }} onAI={async () => { if (selectedElement && selectedElement.type === 'text') { const newText = await generateTextEnhancement("Improve clarity and fix grammar", selectedElement.content); updateBoard({ ...currentBoard, elements: currentBoard.elements.map(e => e.id === selectedId ? { ...e, content: newText } : e) }); } }} />
+      <PropertyPanel element={selectedElement} onChange={(patch: any) => updateBoard({ ...currentBoard, elements: currentBoard.elements.map(e => e.id === selectedId ? { ...e, ...patch, style: { ...e.style, ...patch.style } } : e) })} onDelete={() => { updateBoard({ ...currentBoard, elements: currentBoard.elements.filter(e => e.id !== selectedId) }); setSelectedId(null); }} onAI={async () => { if (selectedElement && selectedElement.type === 'text') { const newText = await generateTextEnhancement("改进文本清晰度和语法", selectedElement.content); updateBoard({ ...currentBoard, elements: currentBoard.elements.map(e => e.id === selectedId ? { ...e, content: newText } : e) }); } }} />
       {showTableGrid && <GridSelector onClose={() => setShowTableGrid(false)} onSelect={(rows, cols) => { const centerPos = { x: (window.innerWidth / 2 - currentBoard.viewport.x) / currentBoard.viewport.zoom - (cols * 50), y: (window.innerHeight / 2 - currentBoard.viewport.y) / currentBoard.viewport.zoom - (rows * 20) }; const newEl: CanvasElement = { id: generateId(), type: 'table', x: centerPos.x, y: centerPos.y, width: cols * 100, height: rows * 40, content: { rows, cols, data: {} }, style: { backgroundColor: '#1a1a1a', zIndex: currentBoard.elements.length + 1 } }; updateBoard({ ...currentBoard, elements: [...currentBoard.elements, newEl] }); setShowTableGrid(false); setSelectedId(newEl.id); setActiveTool('select'); }} />}
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
       <div className="fixed bottom-4 right-4 bg-black/50 px-3 py-1 rounded-full text-xs text-gray-500 font-mono pointer-events-none">{Math.round(currentBoard.viewport.zoom * 100)}%</div>
@@ -1471,14 +1486,14 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
                         <div className="flex-1 flex flex-col items-center justify-center">
                             <div className="text-5xl mb-4 select-none">{board.icon}</div>
                             <h3 className="text-lg font-bold text-center text-gray-200 group-hover:text-white truncate w-full px-2">{board.name}</h3>
-                            <span className="text-xs text-gray-600 mt-2">{board.elements.length} items</span>
+                            <span className="text-xs text-gray-600 mt-2">{board.elements.length} 个元素</span>
                         </div>
                         
                         <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                              <button 
                                 onClick={(e) => { e.stopPropagation(); onDeleteBoard(board.id); }}
                                 className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg"
-                                title="Delete Board"
+                                title="删除画板"
                              >
                                  <Trash2 size={14} />
                              </button>
@@ -1491,7 +1506,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
             {isCreating && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in duration-200">
                     <div className="bg-[#1E1E1E] border border-[#333] p-6 rounded-2xl w-96 shadow-2xl">
-                        <h2 className="text-xl font-bold mb-4">Create New Board</h2>
+                        <h2 className="text-xl font-bold mb-4">创建新画板</h2>
                         
                         <div className="flex gap-4 mb-4">
                             <div className="relative">
@@ -1513,7 +1528,7 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
                             </div>
                             <input 
                                 className="flex-1 bg-[#121212] border border-[#333] rounded-xl px-4 outline-none focus:border-[#00FF9D] text-white"
-                                placeholder="Board Name"
+                                placeholder="画板名称"
                                 autoFocus
                                 value={newBoardName}
                                 onChange={(e) => setNewBoardName(e.target.value)}
@@ -1522,8 +1537,8 @@ const HomeDashboard = ({ boards, onOpenBoard, onCreateBoard, onDeleteBoard, onUp
                         </div>
 
                         <div className="flex justify-end gap-2">
-                            <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
-                            <button onClick={handleCreate} className="px-4 py-2 bg-[#00FF9D] text-black font-bold rounded-xl hover:bg-[#00FF9D]/90">Create</button>
+                            <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                            <button onClick={handleCreate} className="px-4 py-2 bg-[#00FF9D] text-black font-bold rounded-xl hover:bg-[#00FF9D]/90">创建</button>
                         </div>
                     </div>
                 </div>
@@ -1815,7 +1830,7 @@ export default function App() {
                         viewport: b.data?.viewport || { x: 0, y: 0, zoom: 1 }, lastModified: b.last_modified,
                     })));
                 } else {
-                    const welcome = { id: crypto.randomUUID(), name: 'Welcome Board', icon: '👋', elements: [], connections: [], lastModified: Date.now(), viewport: { x: 0, y: 0, zoom: 1 } };
+                    const welcome = { id: crypto.randomUUID(), name: '欢迎画板', icon: '👋', elements: [], connections: [], lastModified: Date.now(), viewport: { x: 0, y: 0, zoom: 1 } };
                     setBoards([welcome]);
                     supabase.from('boards').insert({ id: welcome.id, user_id: session.user.id, name: welcome.name, icon: welcome.icon,
                         data: { elements: welcome.elements, connections: welcome.connections, viewport: welcome.viewport }, last_modified: welcome.lastModified }).then(() => {}, (e: any) => console.warn('DB insert error:', e));

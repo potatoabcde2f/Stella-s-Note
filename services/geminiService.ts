@@ -13,7 +13,7 @@ if (apiKey) {
 export const generateTextEnhancement = async (prompt: string, currentText: string): Promise<string> => {
   if (!ai) {
     console.warn("Gemini API Key missing");
-    return "Error: API Key missing.";
+    return "错误：API 密钥缺失。";
   }
 
   try {
@@ -30,12 +30,12 @@ export const generateTextEnhancement = async (prompt: string, currentText: strin
     return response.text || "";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "Error generating content.";
+    return "生成内容时出错。";
   }
 };
 
 export const suggestIdeas = async (topic: string): Promise<string[]> => {
-    if (!ai) return ["API Key Missing"];
+    if (!ai) return ["API密钥缺失"];
     
     try {
         const response = await ai.models.generateContent({
