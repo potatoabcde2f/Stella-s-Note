@@ -130,9 +130,6 @@ const processInline = (text: string) => {
 
 const getFontFamily = (type?: string) => {
     switch(type) {
-        case 'serif': return "'Playfair Display', serif";
-        case 'mono': return "'JetBrains Mono', monospace";
-        case 'hand': return "'Caveat', cursive";
         case 'noto-sans': return "'Noto Sans SC', 'Microsoft YaHei', sans-serif";
         case 'noto-serif': return "'Noto Serif SC', 'SimSun', serif";
         case 'ma-shan': return "'Ma Shan Zheng', cursive";
@@ -147,7 +144,7 @@ const getFontFamily = (type?: string) => {
         case 'ximai': return "'XimaiXihuan', sans-serif";
         case 'mengqu': return "'ZihunMengqu', sans-serif";
         case 'poxiao': return "'PoxiaoPixel', sans-serif";
-        default: return "'Inter', sans-serif";
+        default: return "'Caveat', cursive";
     }
 };
 
@@ -256,11 +253,8 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
             <>
                 <div>
                     <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">字体</label>
-                    <div className="grid grid-cols-3 gap-1.5 max-h-36 overflow-y-auto">
-                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'sans' } })} className={`px-2 py-1.5 text-xs rounded border ${(!element.style?.fontFamily || element.style?.fontFamily === 'sans') ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>默认</button>
-                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'serif' } })} className={`font-playfair px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'serif' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>衬线</button>
-                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'mono' } })} className={`font-mono px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'mono' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>等宽</button>
-                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'hand' } })} className={`font-hand px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'hand' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>手写</button>
+                    <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto">
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: '' } })} className={`font-hand px-2 py-1.5 text-xs rounded border ${(!element.style?.fontFamily || element.style?.fontFamily === '') ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>手写</button>
                          <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'noto-sans' } })} className={`font-noto-sans px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'noto-sans' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>思源黑</button>
                          <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'noto-serif' } })} className={`font-noto-serif px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'noto-serif' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>思源宋</button>
                          <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'ma-shan' } })} className={`font-ma-shan px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'ma-shan' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>书法</button>
@@ -1390,7 +1384,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
                             style={{ top: h.startsWith('n') ? -4 : 'auto', bottom: h.startsWith('s') ? -4 : 'auto', left: h.endsWith('w') ? -4 : 'auto', right: h.endsWith('e') ? -4 : 'auto', cursor: `${h}-resize` }}
                         />
                     ))}
-                    <div className="absolute -top-8 right-0 bg-red-500/80 p-1 rounded text-white cursor-pointer hover:bg-red-500" onClick={(e) => { e.stopPropagation(); updateBoard({...currentBoard, elements: currentBoard.elements.filter(e => e.id !== el.id)})}}>
+                    <div className="absolute -top-8 right-0 bg-red-500/80 p-1.5 rounded text-white cursor-pointer hover:bg-red-500 z-10" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); updateBoard({...currentBoard, elements: currentBoard.elements.filter(e => e.id !== el.id)})}}>
                         <Trash2 size={12} />
                     </div>
                 </>
