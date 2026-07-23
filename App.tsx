@@ -106,9 +106,10 @@ const MarkdownRenderer = ({ text, style }: { text: string, style?: any }) => {
     return (
         <div 
             className={`md-content w-full h-full text-sm leading-relaxed overflow-y-auto custom-scrollbar pr-2`}
-            style={{ 
+            style={{
                 textAlign: style?.textAlign || 'left',
-                fontFamily: getFontFamily(style?.fontFamily)
+                fontFamily: getFontFamily(style?.fontFamily),
+                fontSize: style?.fontSize ? style.fontSize + 'px' : undefined
             }}
         >
             {renderedLines}
@@ -139,6 +140,13 @@ const getFontFamily = (type?: string) => {
         case 'zcool': return "'ZCOOL QingKe HuangYou', sans-serif";
         case 'kuai-le': return "'ZCOOL KuaiLe', cursive";
         case 'long-cang': return "'Long Cang', cursive";
+        case 'biantao': return "'ZihunBiantao', sans-serif";
+        case 'youshe': return "'YousheBiaotiHei', sans-serif";
+        case 'mingchao': return "'HuiwenMingchao', serif";
+        case 'tiejili': return "'Tiejili', sans-serif";
+        case 'ximai': return "'XimaiXihuan', sans-serif";
+        case 'mengqu': return "'ZihunMengqu', sans-serif";
+        case 'poxiao': return "'PoxiaoPixel', sans-serif";
         default: return "'Inter', sans-serif";
     }
 };
@@ -260,6 +268,13 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
                          <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'zcool' } })} className={`font-zcool px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'zcool' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>黄油</button>
                          <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'kuai-le' } })} className={`font-kuai-le px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'kuai-le' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>快乐</button>
                          <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'long-cang' } })} className={`font-long-cang px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'long-cang' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>龙仓</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'biantao' } })} className={`font-biantao px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'biantao' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>扁桃体</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'youshe' } })} className={`font-youshe px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'youshe' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>优设黑</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'mingchao' } })} className={`font-mingchao px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'mingchao' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>明朝体</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'tiejili' } })} className={`font-tiejili px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'tiejili' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>铁蒺藜</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'ximai' } })} className={`font-ximai px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'ximai' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>喜脉</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'mengqu' } })} className={`font-mengqu px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'mengqu' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>喜悦</button>
+                         <button onClick={() => onChange({ style: { ...element.style, fontFamily: 'poxiao' } })} className={`font-poxiao px-2 py-1.5 text-xs rounded border ${element.style?.fontFamily === 'poxiao' ? 'border-[#00FF9D] text-[#00FF9D]' : 'border-[#333] text-gray-400'}`}>破晓</button>
                     </div>
                     {element.type !== 'note' && (
                         <div className="flex bg-[#222] rounded-lg p-1 border border border-[#333]">
@@ -276,6 +291,19 @@ const PropertyPanel = ({ element, onChange, onDelete, onAI }: any) => {
                             ))}
                         </div>
                     )}
+                    <div className="mt-2">
+                        <label className="text-xs font-semibold text-gray-500 mb-2 block uppercase tracking-wide">字号: {element.style?.fontSize || 14}px</label>
+                        <div className="flex gap-2 items-center">
+                            <button onClick={() => onChange({ style: { ...element.style, fontSize: Math.max((element.style?.fontSize || 14) - 2, 8) } })} className="px-3 py-1.5 bg-[#222] text-xs rounded-lg border border-[#333] hover:bg-[#2A2A2A] text-gray-400">A-</button>
+                            <input type="range" min="8" max="72" step="2"
+                                value={element.style?.fontSize || 14}
+                                onChange={(e) => onChange({ style: { ...element.style, fontSize: parseInt(e.target.value) } })}
+                                className="flex-1 accent-[#00FF9D] h-1 bg-[#333] rounded-lg appearance-none cursor-pointer"
+                                onPointerDown={(e) => e.stopPropagation()}
+                            />
+                            <button onClick={() => onChange({ style: { ...element.style, fontSize: Math.min((element.style?.fontSize || 14) + 2, 72) } })} className="px-3 py-1.5 bg-[#222] text-xs rounded-lg border border-[#333] hover:bg-[#2A2A2A] text-gray-400">A+</button>
+                        </div>
+                    </div>
                 </div>
             </>
         )}
@@ -461,7 +489,7 @@ const NoteElement = ({ element, onChange }: any) => {
                 rows={1}
             />
         ) : (
-            <div className="w-full relative z-10 pointer-events-none text-lg leading-relaxed whitespace-pre-wrap" style={{ fontFamily: getFontFamily(element.style?.fontFamily || 'serif') }}>
+            <div className="w-full relative z-10 pointer-events-none leading-relaxed whitespace-pre-wrap" style={{ fontFamily: getFontFamily(element.style?.fontFamily || 'serif'), fontSize: (element.style?.fontSize || 18) + 'px' }}>
                 {String(element.content || '') || <span className="opacity-50">空笔记</span>}
             </div>
         )}
