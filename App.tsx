@@ -924,39 +924,59 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
 
   const clipboardRef = useRef<CanvasElement | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [toast, setToast] = useState('');
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const showToast = (msg: string) => {
+      setToast(msg);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(''), 2000);
+  };
   const handleKeyDown = (e: React.KeyboardEvent) => {
       const el = selectedElement;
-      if (!el) return;
       const tag = (document.activeElement?.tagName || '');
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'Delete' || e.key === 'Backspace') {
+          if (!el) return;
           updateBoard({ ...currentBoard, elements: currentBoard.elements.filter(ce => ce.id !== el.id) });
           setSelectedId(null);
+          showToast('已删除组件');
           return;
       }
       if (e.key === 'ArrowUp' && e.shiftKey) {
           e.preventDefault();
+          if (!el) return;
           const newZ = (el.style?.zIndex || 1) + 1;
           updateBoard({ ...currentBoard, elements: currentBoard.elements.map(ce => ce.id === el.id ? { ...ce, style: { ...ce.style, zIndex: newZ } } : ce) });
+          showToast('上移一层');
           return;
       }
       if (e.key === 'ArrowDown' && e.shiftKey) {
           e.preventDefault();
+          if (!el) return;
           const newZ = Math.max((el.style?.zIndex || 1) - 1, 0);
           updateBoard({ ...currentBoard, elements: currentBoard.elements.map(ce => ce.id === el.id ? { ...ce, style: { ...ce.style, zIndex: newZ } } : ce) });
+          showToast('下移一层');
           return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
           e.preventDefault();
+          if (!el) return;
           clipboardRef.current = { ...el, id: 'clipboard' };
+          showToast('已复制组件');
           return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
           e.preventDefault();
           if (!clipboardRef.current) return;
-          const newEl: CanvasElement = { ...clipboardRef.current, id: generateId(), x: el.x + 30, y: el.y + 30 };
+          // 无论是否选中组件，都在视口中央粘贴
+          const cx = (window.innerWidth / 2 - currentBoard.viewport.x) / currentBoard.viewport.zoom - 100;
+          const cy = (window.innerHeight / 2 - currentBoard.viewport.y) / currentBoard.viewport.zoom - 50;
+          const x = el ? el.x + 30 : cx;
+          const y = el ? el.y + 30 : cy;
+          const newEl: CanvasElement = { ...clipboardRef.current, id: generateId(), x, y };
           updateBoard({ ...currentBoard, elements: [...currentBoard.elements, newEl] });
           setSelectedId(newEl.id);
+          showToast('已粘贴组件');
           return;
       }
   };
@@ -1466,6 +1486,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
       <PropertyPanel element={selectedElement} onChange={(patch: any) => updateBoard({ ...currentBoard, elements: currentBoard.elements.map(e => e.id === selectedId ? { ...e, ...patch, style: { ...e.style, ...patch.style } } : e) })} onDelete={() => { updateBoard({ ...currentBoard, elements: currentBoard.elements.filter(e => e.id !== selectedId) }); setSelectedId(null); }} onAI={async () => { if (selectedElement && selectedElement.type === 'text') { const newText = await generateTextEnhancement("改进文本清晰度和语法", selectedElement.content); updateBoard({ ...currentBoard, elements: currentBoard.elements.map(e => e.id === selectedId ? { ...e, content: newText } : e) }); } }} />
       {showTableGrid && <GridSelector onClose={() => setShowTableGrid(false)} onSelect={(rows, cols) => { const centerPos = { x: (window.innerWidth / 2 - currentBoard.viewport.x) / currentBoard.viewport.zoom - (cols * 50), y: (window.innerHeight / 2 - currentBoard.viewport.y) / currentBoard.viewport.zoom - (rows * 20) }; const newEl: CanvasElement = { id: generateId(), type: 'table', x: centerPos.x, y: centerPos.y, width: cols * 100, height: rows * 40, content: { rows, cols, data: {} }, style: { backgroundColor: '#1a1a1a', zIndex: currentBoard.elements.length + 1 } }; updateBoard({ ...currentBoard, elements: [...currentBoard.elements, newEl] }); setShowTableGrid(false); setSelectedId(newEl.id); setActiveTool('select'); }} />}
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+      {toast && <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-[#1a1a1a] border border-[#333] px-5 py-2.5 rounded-xl text-xs text-gray-200 shadow-2xl z-[100] transition-all duration-300 animate-in fade-in">{toast}</div>}
       <div className="fixed bottom-4 right-4 flex items-center gap-2">
           <div className="bg-black/50 px-3 py-1 rounded-full text-xs text-gray-500 font-mono pointer-events-none">{Math.round(currentBoard.viewport.zoom * 100)}%</div>
           <div className="relative">
@@ -1479,6 +1500,7 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
                           <div><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Ctrl</span> + <span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">C</span> 复制组件</div>
                           <div><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Ctrl</span> + <span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">V</span> 粘贴组件</div>
                           <div><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Delete</span> 删除组件</div>
+                          <div className="pt-1 border-t border-[#333]"><span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">Ctrl</span> + <span className="text-white bg-[#333] px-1.5 py-0.5 rounded text-[10px]">滚轮</span> 放大缩小画布</div>
                       </div>
                   </div>
               )}
