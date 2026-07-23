@@ -1190,9 +1190,11 @@ const CanvasWorkspace = ({ board, onSave, onBack }: { board: Board, onSave: (b: 
         }
     } else {
         if (['image', 'file', 'table'].includes(activeTool)) return;
+        const isMobile = window.innerWidth < 768;
         const newEl: CanvasElement = {
             id: generateId(), type: activeTool as ElementType,
-            x: worldPos.x, y: worldPos.y,
+            x: isMobile ? ((window.innerWidth / 2 - currentBoard.viewport.x) / currentBoard.viewport.zoom - 150) : worldPos.x,
+            y: isMobile ? ((20 - currentBoard.viewport.y) / currentBoard.viewport.zoom) : worldPos.y,
             width: activeTool === 'container' ? 300 : 200,
             height: activeTool === 'container' ? 150 : 150, 
             content: activeTool === 'todo' ? { title: 'To Do', items: [{ id: '1', text: 'Task 1', done: false, level: 0 }, { id: '2', text: 'Task 2', done: false, level: 0 }] } : '',
